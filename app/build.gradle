@@ -2,9 +2,6 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
-if (tinkerEnable.toBoolean()) {
-    apply from: 'tinker-support.gradle'
-}
 def gitHash = 'git rev-parse --short HEAD'.execute([], project.rootDir).text.trim()
 def buildTime = new Date().format("yyyy-MM-dd' 'HH:mm:ss")
 println("gitHash:" + gitHash + ",buildTime:" + buildTime)

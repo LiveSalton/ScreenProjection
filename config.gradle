@@ -2,7 +2,7 @@ ext {
     android = [
             compileSdkVersion: 28,
             buildToolsVersion: "28.0.3",
-            minSdkVersion    : 19,
+            minSdkVersion    : 21,
             targetSdkVersion : 28,
             versionCode      : 1,
             versionName      : "1.0.0",
@@ -52,7 +52,6 @@ ext {
             "eventbus"                     : "org.greenrobot:eventbus:3.1.1",
             "utilcode"                     : "com.blankj:utilcode:1.28.0",
             "crashreport_upgrade"          : "com.tencent.bugly:crashreport_upgrade:1.4.1",
-            "tinker-android-lib"           : "com.tencent.tinker:tinker-android-lib:1.9.9",
             "lottie"                       : "com.airbnb.android:lottie:3.3.1",
             "SmartRefreshLayout"           : "com.scwang.smartrefresh:SmartRefreshLayout:1.1.0",
             "BaseRecyclerViewAdapterHelper": "com.github.CymChad:BaseRecyclerViewAdapterHelper:2.9.50",
