@@ -15,6 +15,12 @@ public class XApp extends BaseApplication {
         ForegroundNotificationUtils.setResId(R.drawable.ic_stat_recording);
     }
 
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        ToastUtils.init(this);
+    }
+
     public static void toast(String message, Object... args) {
         ToastUtils.show((args.length == 0) ? message : String.format(message, args));
     }

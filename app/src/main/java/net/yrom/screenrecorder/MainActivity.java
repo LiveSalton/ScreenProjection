@@ -46,6 +46,7 @@ import static net.yrom.screenrecorder.ScreenRecorder.AUDIO_AAC;
 import static net.yrom.screenrecorder.ScreenRecorder.VIDEO_AVC;
 
 public class MainActivity extends BaseRecordActivity {
+    private static final int REQUEST_PERMISSIONS = 2;
     private Button mButton;
     private ToggleButton mAudioToggle;
     private NamedSpinner mVieoResolution;

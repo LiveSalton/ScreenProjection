@@ -1,7 +1,6 @@
 package net.yrom.screenrecorder;
 
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -19,8 +18,6 @@ import android.os.Handler;
 import android.os.StrictMode;
 import android.util.Log;
 import android.widget.Toast;
-
-import com.hjq.toast.ToastUtils;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -41,14 +38,7 @@ import static net.yrom.screenrecorder.ScreenRecorder.VIDEO_AVC;
  */
 class BaseRecordActivity extends Activity {
     private static final int REQUEST_MEDIA_PROJECTION = 1;
-    static final int REQUEST_PERMISSIONS = 2;
-    // members below will be initialized in onCreate()
     private MediaProjectionManager mMediaProjectionManager;
-    /**
-     * <b>NOTE:</b>
-     * {@code ScreenRecorder} should run in background Service
-     * instead of a foreground Activity in this demonstrate.
-     */
     private ScreenRecorder mRecorder;
     private MediaProjection mMediaProjection;
     private VirtualDisplay mVirtualDisplay;
@@ -65,9 +55,6 @@ class BaseRecordActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_MEDIA_PROJECTION) {
-            // NOTE: Should pass this result data into a Service to run ScreenRecorder.
-            // The following codes are merely exemplary.
-
             MediaProjection mediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, data);
             if (mediaProjection == null) {
                 Log.e("@@", "media projection is null");
@@ -276,7 +263,7 @@ class BaseRecordActivity extends Activity {
         view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             startActivity(view);
-        } catch (ActivityNotFoundException e) {
+        } catch (Exception e) {
             // no activity can open this video
         }
     }
