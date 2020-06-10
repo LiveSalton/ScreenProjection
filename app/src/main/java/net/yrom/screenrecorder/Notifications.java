@@ -16,63 +16,61 @@
 
 package net.yrom.screenrecorder;
 
-import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.os.Build;
-import android.os.SystemClock;
-import android.text.format.DateUtils;
 
 import static android.os.Build.VERSION_CODES.O;
-import static net.yrom.screenrecorder.MainActivity.ACTION_STOP;
 
-/**
- * @author yrom
- * @version 2017/12/1
- */
 class Notifications extends ContextWrapper {
-    private static final int id = 0x1fff;
-    private static final String CHANNEL_ID = "Recording";
-    private static final String CHANNEL_NAME = "Screen Recorder Notifications";
+    private static int CHANNEL_POSITION = 0x1fff;
+    private static String CHANNEL_ID = "Screen sharing";
+    private static String NotifyTitle = "Screen sharing";
+    private static String NotifyContent = "The elephant print picture is sharing your screen.";
+    private static int ResId = R.drawable.ic_stat_recording;
 
-    private long mLastFiredTime = 0;
     private NotificationManager mManager;
     private Notification.Action mStopAction;
     private Notification.Builder mBuilder;
+    private Context context;
 
     Notifications(Context context) {
         super(context);
+        this.context = context;
         if (Build.VERSION.SDK_INT >= O) {
-            createNotificationChannel();
+            NotificationChannel channel =
+                    new NotificationChannel(CHANNEL_ID, NotifyTitle, NotificationManager.IMPORTANCE_LOW);
+            channel.setShowBadge(false);
+            getNotificationManager().createNotificationChannel(channel);
         }
     }
 
-    public void recording(long timeMs) {
-        if (SystemClock.elapsedRealtime() - mLastFiredTime < 1000) {
-            return;
-        }
+    public void recording() {
         Notification notification = getBuilder()
-                .setContentText(getString(R.string.length_video)+" " + DateUtils.formatElapsedTime(timeMs / 1000))
+                .setContentText(NotifyContent)
                 .build();
-        getNotificationManager().notify(id, notification);
-        mLastFiredTime = SystemClock.elapsedRealtime();
+        getNotificationManager().notify(CHANNEL_POSITION, notification);
+        if (context instanceof Service) {
+            ((Service) context).startForeground(CHANNEL_POSITION, notification);
+        }
     }
 
     private Notification.Builder getBuilder() {
         if (mBuilder == null) {
             Notification.Builder builder = new Notification.Builder(this)
-                    .setContentTitle(getString(R.string.gravando))
+                    .setContentTitle(NotifyTitle)
                     .setOngoing(true)
                     .setLocalOnly(true)
                     .setOnlyAlertOnce(true)
                     .addAction(stopAction())
                     .setWhen(System.currentTimeMillis())
-                    .setSmallIcon(R.drawable.ic_stat_recording);
+                    .setSmallIcon(ResId);
             if (Build.VERSION.SDK_INT >= O) {
                 builder.setChannelId(CHANNEL_ID)
                         .setUsesChronometer(true);
@@ -82,29 +80,24 @@ class Notifications extends ContextWrapper {
         return mBuilder;
     }
 
-    @TargetApi(O)
-    private void createNotificationChannel() {
-        NotificationChannel channel =
-                new NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW);
-        channel.setShowBadge(false);
-        getNotificationManager().createNotificationChannel(channel);
-    }
-
     private Notification.Action stopAction() {
         if (mStopAction == null) {
-            Intent intent = new Intent(ACTION_STOP).setPackage(getPackageName());
+            Intent intent = new Intent(XApp.ACTION_STOP).setPackage(getPackageName());
             PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 1,
                     intent, PendingIntent.FLAG_ONE_SHOT);
-            mStopAction = new Notification.Action(android.R.drawable.ic_media_pause, getString(R.string.stop), pendingIntent);
+            mStopAction =
+                    new Notification.Action(android.R.drawable.ic_media_pause, getString(R.string.stop), pendingIntent);
+            // mStopAction = new Notification.Action.Builder(new Notification.Action(android.R.drawable.ic_media_pause,
+            //         getString(R.string.stop), pendingIntent))
+            //         .build();
         }
         return mStopAction;
     }
 
     void clear() {
-        mLastFiredTime = 0;
         mBuilder = null;
         mStopAction = null;
-        getNotificationManager().cancelAll();
+        getNotificationManager().cancel(CHANNEL_POSITION);
     }
 
     NotificationManager getNotificationManager() {

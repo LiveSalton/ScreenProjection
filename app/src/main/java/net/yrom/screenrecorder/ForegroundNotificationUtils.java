@@ -3,11 +3,16 @@ package net.yrom.screenrecorder;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Build;
+import android.text.format.DateUtils;
+
+import com.salton123.app.BaseApplication;
 
 import androidx.annotation.DrawableRes;
 
@@ -19,10 +24,10 @@ import androidx.annotation.DrawableRes;
  */
 public class ForegroundNotificationUtils {
     // 通知渠道的id
-    private static String CHANNEL_ID = "screen_sharing";
+    private static String CHANNEL_ID = "Screen sharing";
     private static int CHANNEL_POSITION = 1;
     private static String NotifyTitle = "Screen sharing";
-    private static String NotifyContent = "Teachee is sharing your screen.";
+    private static String NotifyContent = "The elephant print picture is sharing your screen.";
     private static int ResId = android.R.drawable.stat_notify_sync;
 
     public static void setResId(@DrawableRes int resId) {
@@ -53,9 +58,7 @@ public class ForegroundNotificationUtils {
         }
     }
 
-    //    private static String notifyNma = "主服务";
     public static void startForegroundNotification(Service service) {
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             //启动前台服务而不显示通知的漏洞已在 API Level 25 修复
             NotificationManager manager = (NotificationManager) service.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -76,6 +79,7 @@ public class ForegroundNotificationUtils {
                     .setWhen(System.currentTimeMillis())
                     .setSmallIcon(ResId)//小图标一定需要设置,否则会报错(如果不设置它启动服务前台化不会报错,但是你会发现这个通知不会启动),如果是普通通知,不设置必然报错
                     .setLargeIcon(BitmapFactory.decodeResource(service.getResources(), ResId))
+                    .addAction(stopAction())
                     .build();
             service.startForeground(CHANNEL_POSITION, notification);
             //服务前台化只能使用startForeground()方法,不能使用 notificationManager.notify(1,notification);
@@ -87,7 +91,9 @@ public class ForegroundNotificationUtils {
                     .setContentTitle(NotifyTitle)//设置标题
                     .setContentText(NotifyContent)//设置内容
                     .setWhen(System.currentTimeMillis())//设置创建时间
-                    .setSmallIcon(ResId)//设置状态栏图标
+                    .setSmallIcon(ResId)//小图标一定需要设置,否则会报错(如果不设置它启动服务前台化不会报错,但是你会发现这个通知不会启动),如果是普通通知,不设置必然报错
+                    .setLargeIcon(BitmapFactory.decodeResource(service.getResources(), ResId))
+                    .addAction(stopAction())
                     .setLargeIcon(BitmapFactory.decodeResource(service.getResources(), ResId))//设置通知栏图标
                     .build();
             service.startForeground(CHANNEL_POSITION, notification);
@@ -107,6 +113,22 @@ public class ForegroundNotificationUtils {
                     (NotificationManager) service.getSystemService(Context.NOTIFICATION_SERVICE);
             notificationManager.cancel(CHANNEL_POSITION);
         }
+        mStopAction = null;
+    }
+
+    private static Notification.Action mStopAction;
+
+    private static Notification.Action stopAction() {
+        if (mStopAction == null) {
+            Intent intent = new Intent(XApp.ACTION_STOP)
+                    .setPackage(BaseApplication.sInstance.getPackageName());
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(BaseApplication.sInstance, 1,
+                    intent, PendingIntent.FLAG_ONE_SHOT);
+            mStopAction =
+                    new Notification.Action(android.R.drawable.ic_media_pause,
+                            BaseApplication.sInstance.getString(R.string.stop), pendingIntent);
+        }
+        return mStopAction;
     }
 
 }

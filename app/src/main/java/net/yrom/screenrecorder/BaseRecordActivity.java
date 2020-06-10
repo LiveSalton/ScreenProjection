@@ -150,7 +150,7 @@ class BaseRecordActivity extends Activity {
 
             @Override
             public void onStart() {
-                mNotifications.recording(0);
+                mNotifications.recording();
             }
 
             @Override
@@ -159,7 +159,7 @@ class BaseRecordActivity extends Activity {
                     startTime = presentationTimeUs;
                 }
                 long time = (presentationTimeUs - startTime) / 1000;
-                mNotifications.recording(time);
+                mNotifications.recording();
             }
         });
         return r;
@@ -229,7 +229,7 @@ class BaseRecordActivity extends Activity {
             return;
         }
         mRecorder.start();
-        registerReceiver(mStopActionReceiver, new IntentFilter(ACTION_STOP));
+        registerReceiver(mStopActionReceiver, new IntentFilter(XApp.ACTION_STOP));
         moveTaskToBack(true);
     }
 
@@ -281,12 +281,10 @@ class BaseRecordActivity extends Activity {
         }
     }
 
-    static final String ACTION_STOP = BuildConfig.APPLICATION_ID + ".action.STOP";
-
     private BroadcastReceiver mStopActionReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ACTION_STOP.equals(intent.getAction())) {
+            if (XApp.ACTION_STOP.equals(intent.getAction())) {
                 stopRecordingAndOpenFile(context);
             }
         }
