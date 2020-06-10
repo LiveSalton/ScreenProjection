@@ -16,10 +16,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.StrictMode;
 import android.util.Log;
 import android.widget.Toast;
+
+import com.hjq.toast.ToastUtils;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -291,18 +292,7 @@ class BaseRecordActivity extends Activity {
         }
     };
 
-    public void toast(String message, Object... args) {
-
-        int length_toast = Locale.getDefault().getCountry().equals("BR") ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT;
-        // In Brazilian Portuguese this may take longer to read
-
-        Toast toast = Toast.makeText(this,
-                (args.length == 0) ? message : String.format(Locale.US, message, args),
-                length_toast);
-        if (Looper.myLooper() != Looper.getMainLooper()) {
-            runOnUiThread(toast::show);
-        } else {
-            toast.show();
-        }
+    public static void toast(String message, Object... args) {
+        ToastUtils.show((args.length == 0) ? message : String.format(message, args));
     }
 }
