@@ -1,0 +1,104 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
+if (tinkerEnable.toBoolean()) {
+    apply from: 'tinker-support.gradle'
+}
+def gitHash = 'git rev-parse --short HEAD'.execute([], project.rootDir).text.trim()
+def buildTime = new Date().format("yyyy-MM-dd' 'HH:mm:ss")
+println("gitHash:" + gitHash + ",buildTime:" + buildTime)
+android {
+
+    compileSdkVersion "${rootProject.ext.android.compileSdkVersion}" as Integer
+    buildToolsVersion "${rootProject.ext.android.buildToolsVersion}"
+    defaultConfig {
+        minSdkVersion rootProject.ext.android.minSdkVersion as Integer
+        targetSdkVersion rootProject.ext.android.targetSdkVersion as Integer
+        applicationId rootProject.ext.android.applicationId
+        versionName rootProject.ext.android.versionName
+        versionCode rootProject.ext.android.versionCode as Integer
+        flavorDimensions versionName
+        multiDexEnabled true
+        vectorDrawables.useSupportLibrary = true
+        ndk {
+            abiFilters "armeabi-v7a" , "x86"
+//            "arm64-v8a"
+//            "armeabi-v7a" , "x86" ,
+        }
+        buildConfigField "String", "GIT_HASH", "\"${gitHash}\""
+        buildConfigField "String", "BUILD_TIME", "\"${buildTime}\""
+    }
+
+    signingConfigs {
+        release {
+            keyAlias "${rootProject.ext.keystore.keyAlias}"
+            keyPassword "${rootProject.ext.keystore.keyPassword}"
+            storeFile file("${rootProject.ext.keystore.storeFile}")
+            storePassword "${rootProject.ext.keystore.storePassword}"
+            println("release storeFile:" + file("${rootProject.ext.keystore.storeFile}").getAbsolutePath())
+            // 使用旧版签名，禁用V2版签名模式
+            v2SigningEnabled false
+        }
+    }
+
+    buildTypes {
+        debug {
+            if ("${rootProject.ext.dependVersion.appDevelop}" == "true") {
+                versionNameSuffix '00'
+                minifyEnabled false
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.release
+//                minifyEnabled true
+//                shrinkResources true
+//                zipAlignEnabled true
+                proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            }
+        }
+        release {
+            signingConfig signingConfigs.release
+//            minifyEnabled true
+//            shrinkResources true
+//            zipAlignEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    packagingOptions {
+        exclude 'META-INF/proguard/androidx-annotations.pro'
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.each { output ->
+            if (output.outputFileName.endsWith('.apk')) {
+                // Rename APK
+                def applicationId = defaultConfig.applicationId
+                def versionCode = defaultConfig.versionCode
+                def versionName = defaultConfig.versionName
+                output.outputFileName = "${applicationId}_v${versionName}_${versionCode}_${rootProject.ext.android.channel}.apk"
+            }
+        }
+    }
+    dexOptions {
+        javaMaxHeapSize "4g"
+    }
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.core:core-ktx:1.2.0'
+    implementation "com.salton123:saltonFramework:1.3.0.19"
+    implementation"com.github.CymChad:BaseRecyclerViewAdapterHelper:2.9.50"
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    implementation 'com.caverock:androidsvg:1.4'
+    implementation 'com.lxj:xpopup:1.9.0' //就是androidx版本
+}
