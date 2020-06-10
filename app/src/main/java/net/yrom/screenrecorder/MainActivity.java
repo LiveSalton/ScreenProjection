@@ -16,30 +16,14 @@
 package net.yrom.screenrecorder;
 
 import android.annotation.TargetApi;
-import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.graphics.Point;
-import android.hardware.display.DisplayManager;
-import android.hardware.display.VirtualDisplay;
 import android.media.MediaCodecInfo;
-import android.media.projection.MediaProjection;
-import android.media.projection.MediaProjectionManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.Range;
@@ -47,18 +31,13 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.SpinnerAdapter;
-import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import net.yrom.screenrecorder.view.NamedSpinner;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 import static android.Manifest.permission.RECORD_AUDIO;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
@@ -66,11 +45,8 @@ import static android.os.Build.VERSION_CODES.M;
 import static net.yrom.screenrecorder.ScreenRecorder.AUDIO_AAC;
 import static net.yrom.screenrecorder.ScreenRecorder.VIDEO_AVC;
 
-public class MainActivity extends Activity {
-    private static final int REQUEST_MEDIA_PROJECTION = 1;
-    private static final int REQUEST_PERMISSIONS = 2;
-    // members below will be initialized in onCreate()
-    private MediaProjectionManager mMediaProjectionManager;
+public class MainActivity extends BaseRecordActivity {
+
     private Button mButton;
     private ToggleButton mAudioToggle;
     private NamedSpinner mVieoResolution;
@@ -87,25 +63,12 @@ public class MainActivity extends Activity {
     private NamedSpinner mOrientation;
     private MediaCodecInfo[] mAvcCodecInfos; // avc codecs
     private MediaCodecInfo[] mAacCodecInfos; // aac codecs
-    private Notifications mNotifications;
-
-    /**
-     * <b>NOTE:</b>
-     * {@code ScreenRecorder} should run in background Service
-     * instead of a foreground Activity in this demonstrate.
-     */
-    private ScreenRecorder mRecorder;
-    private MediaProjection mMediaProjection;
-    private VirtualDisplay mVirtualDisplay;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mMediaProjectionManager = (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
-        mNotifications = new Notifications(getApplicationContext());
         bindViews();
-
         Utils.findEncodersByTypeAsync(VIDEO_AVC, infos -> {
             logCodecInfos(infos, VIDEO_AVC);
             mAvcCodecInfos = infos;
@@ -141,153 +104,6 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_MEDIA_PROJECTION) {
-            // NOTE: Should pass this result data into a Service to run ScreenRecorder.
-            // The following codes are merely exemplary.
-
-            MediaProjection mediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, data);
-            if (mediaProjection == null) {
-                Log.e("@@", "media projection is null");
-                return;
-            }
-
-            mMediaProjection = mediaProjection;
-            mMediaProjection.registerCallback(mProjectionCallback, new Handler());
-            startCapturing(mediaProjection);
-        }
-    }
-
-    private void startCapturing(MediaProjection mediaProjection) {
-        VideoEncodeConfig video = createVideoConfig();
-        AudioEncodeConfig audio = createAudioConfig(); // audio can be null
-        if (video == null) {
-            toast(getString(R.string.create_screenRecorder_failure));
-            return;
-        }
-
-        File dir = getSavingDir();
-        if (!dir.exists() && !dir.mkdirs()) {
-            cancelRecorder();
-            return;
-        }
-        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
-        final File file = new File(dir, "Screenshots-" + format.format(new Date())
-                + "-" + video.width + "x" + video.height + ".mp4");
-        Log.d("@@", "Create recorder with :" + video + " \n " + audio + "\n " + file);
-        mRecorder = newRecorder(mediaProjection, video, audio, file);
-        if (hasPermissions()) {
-            startRecorder();
-        } else {
-            cancelRecorder();
-        }
-    }
-
-    private MediaProjection.Callback mProjectionCallback = new MediaProjection.Callback() {
-        @Override
-        public void onStop() {
-            if (mRecorder != null) {
-                stopRecorder();
-            }
-        }
-    };
-
-    private ScreenRecorder newRecorder(MediaProjection mediaProjection, VideoEncodeConfig video,
-                                       AudioEncodeConfig audio, File output) {
-        final VirtualDisplay display = getOrCreateVirtualDisplay(mediaProjection, video);
-        ScreenRecorder r = new ScreenRecorder(video, audio, display, output.getAbsolutePath());
-        r.setCallback(new ScreenRecorder.Callback() {
-            long startTime = 0;
-
-            @Override
-            public void onStop(Throwable error) {
-                runOnUiThread(() -> stopRecorder());
-                if (error != null) {
-                    toast("Recorder error ! See logcat for more details");
-                    error.printStackTrace();
-                    output.delete();
-                } else {
-                    Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-                            .addCategory(Intent.CATEGORY_DEFAULT)
-                            .setData(Uri.fromFile(output));
-                    sendBroadcast(intent);
-                }
-            }
-
-            @Override
-            public void onStart() {
-                mNotifications.recording(0);
-            }
-
-            @Override
-            public void onRecording(long presentationTimeUs) {
-                if (startTime <= 0) {
-                    startTime = presentationTimeUs;
-                }
-                long time = (presentationTimeUs - startTime) / 1000;
-                mNotifications.recording(time);
-            }
-        });
-        return r;
-    }
-
-
-    private VirtualDisplay getOrCreateVirtualDisplay(MediaProjection mediaProjection, VideoEncodeConfig config) {
-        if (mVirtualDisplay == null) {
-            mVirtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecorder-display0",
-                    config.width, config.height, 1 /*dpi*/,
-                    DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
-                    null /*surface*/, null, null);
-        } else {
-            // resize if size not matched
-            Point size = new Point();
-            mVirtualDisplay.getDisplay().getSize(size);
-            if (size.x != config.width || size.y != config.height) {
-                mVirtualDisplay.resize(config.width, config.height, 1);
-            }
-        }
-        return mVirtualDisplay;
-    }
-
-    private AudioEncodeConfig createAudioConfig() {
-        if (!mAudioToggle.isChecked()) return null;
-        String codec = getSelectedAudioCodec();
-        if (codec == null) {
-            return null;
-        }
-        int bitrate = getSelectedAudioBitrate();
-        int samplerate = getSelectedAudioSampleRate();
-        int channelCount = getSelectedAudioChannelCount();
-        int profile = getSelectedAudioProfile();
-
-        return new AudioEncodeConfig(codec, AUDIO_AAC, bitrate, samplerate, channelCount, profile);
-    }
-
-    private VideoEncodeConfig createVideoConfig() {
-        final String codec = getSelectedVideoCodec();
-        if (codec == null) {
-            // no selected codec ??
-            return null;
-        }
-        // video size
-        int[] selectedWithHeight = getSelectedWithHeight();
-        boolean isLandscape = isLandscape();
-        int width = selectedWithHeight[isLandscape ? 0 : 1];
-        int height = selectedWithHeight[isLandscape ? 1 : 0];
-        int framerate = getSelectedFramerate();
-        int iframe = getSelectedIFrameInterval();
-        int bitrate = getSelectedVideoBitrate();
-        MediaCodecInfo.CodecProfileLevel profileLevel = getSelectedProfileLevel();
-        return new VideoEncodeConfig(width, height, bitrate,
-                framerate, iframe, codec, VIDEO_AVC, profileLevel);
-    }
-
-    private static File getSavingDir() {
-        return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
-                "Screenshots");
-    }
-
-    @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == REQUEST_PERMISSIONS) {
             int granted = PackageManager.PERMISSION_GRANTED;
@@ -302,31 +118,19 @@ public class MainActivity extends Activity {
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        saveSelections();
-        stopRecorder();
-        if (mVirtualDisplay != null) {
-            mVirtualDisplay.setSurface(null);
-            mVirtualDisplay.release();
-            mVirtualDisplay = null;
-        }
-        if (mMediaProjection != null) {
-            mMediaProjection.unregisterCallback(mProjectionCallback);
-            mMediaProjection.stop();
-            mMediaProjection = null;
-        }
-    }
-
-    private void requestMediaProjection() {
-        Intent captureIntent = mMediaProjectionManager.createScreenCaptureIntent();
-        startActivityForResult(captureIntent, REQUEST_MEDIA_PROJECTION);
-    }
-
     private void bindViews() {
         mButton = findViewById(R.id.record_button);
-        mButton.setOnClickListener(this::onButtonClick);
+        mButton.setOnClickListener(v -> {
+            if (isRecording) {
+                stopRecordingAndOpenFile(v.getContext());
+            } else if (hasPermissions()) {
+                toCapture();
+            } else if (Build.VERSION.SDK_INT >= M) {
+                requestPermissions();
+            } else {
+                toast(getString(R.string.no_permission_to_write_sd_ard));
+            }
+        });
 
         mVideoCodec = findViewById(R.id.video_codec);
         mVieoResolution = findViewById(R.id.resolution);
@@ -368,50 +172,6 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void onButtonClick(View v) {
-        if (mRecorder != null) {
-            stopRecordingAndOpenFile(v.getContext());
-        } else if (hasPermissions()) {
-            if (mMediaProjection == null) {
-                requestMediaProjection();
-            } else {
-                startCapturing(mMediaProjection);
-            }
-        } else if (Build.VERSION.SDK_INT >= M) {
-            requestPermissions();
-        } else {
-            toast(getString(R.string.no_permission_to_write_sd_ard));
-        }
-    }
-
-    private void startRecorder() {
-        if (mRecorder == null) return;
-        mRecorder.start();
-        mButton.setText(getString(R.string.stop_recorder));
-        registerReceiver(mStopActionReceiver, new IntentFilter(ACTION_STOP));
-        moveTaskToBack(true);
-    }
-
-    private void stopRecorder() {
-        mNotifications.clear();
-        if (mRecorder != null) {
-            mRecorder.quit();
-        }
-        mRecorder = null;
-        mButton.setText(getString(R.string.restart_recorder));
-        try {
-            unregisterReceiver(mStopActionReceiver);
-        } catch (Exception e) {
-            //ignored
-        }
-    }
-
-    private void cancelRecorder() {
-        if (mRecorder == null) return;
-        Toast.makeText(this, getString(R.string.permission_denied_screen_recorder_cancel), Toast.LENGTH_SHORT).show();
-        stopRecorder();
-    }
-
     @TargetApi(M)
     private void requestPermissions() {
         String[] permissions = mAudioToggle.isChecked()
@@ -435,22 +195,18 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    private boolean hasPermissions() {
-        PackageManager pm = getPackageManager();
-        String packageName = getPackageName();
-        int granted = (mAudioToggle.isChecked() ? pm.checkPermission(RECORD_AUDIO, packageName) : PackageManager.PERMISSION_GRANTED)
-                | pm.checkPermission(WRITE_EXTERNAL_STORAGE, packageName);
-        return granted == PackageManager.PERMISSION_GRANTED;
-    }
-
     private void onResolutionChanged(int selectedPosition, String resolution) {
         String codecName = getSelectedVideoCodec();
         MediaCodecInfo codec = getVideoCodecInfo(codecName);
-        if (codec == null) return;
+        if (codec == null) {
+            return;
+        }
         MediaCodecInfo.CodecCapabilities capabilities = codec.getCapabilitiesForType(VIDEO_AVC);
         MediaCodecInfo.VideoCapabilities videoCapabilities = capabilities.getVideoCapabilities();
         String[] xes = resolution.split("x");
-        if (xes.length != 2) throw new IllegalArgumentException();
+        if (xes.length != 2) {
+            throw new IllegalArgumentException();
+        }
         boolean isLandscape = isLandscape();
         int width = Integer.parseInt(xes[isLandscape ? 0 : 1]);
         int height = Integer.parseInt(xes[isLandscape ? 1 : 0]);
@@ -474,7 +230,9 @@ public class MainActivity extends Activity {
     private void onBitrateChanged(int selectedPosition, String bitrate) {
         String codecName = getSelectedVideoCodec();
         MediaCodecInfo codec = getVideoCodecInfo(codecName);
-        if (codec == null) return;
+        if (codec == null) {
+            return;
+        }
         MediaCodecInfo.CodecCapabilities capabilities = codec.getCapabilitiesForType(VIDEO_AVC);
         MediaCodecInfo.VideoCapabilities videoCapabilities = capabilities.getVideoCapabilities();
         int selectedBitrate = Integer.parseInt(bitrate) * 1000;
@@ -491,7 +249,9 @@ public class MainActivity extends Activity {
     private void onOrientationChanged(int selectedPosition, String orientation) {
         String codecName = getSelectedVideoCodec();
         MediaCodecInfo codec = getVideoCodecInfo(codecName);
-        if (codec == null) return;
+        if (codec == null) {
+            return;
+        }
         MediaCodecInfo.CodecCapabilities capabilities = codec.getCapabilitiesForType(VIDEO_AVC);
         MediaCodecInfo.VideoCapabilities videoCapabilities = capabilities.getVideoCapabilities();
         int[] selectedWithHeight = getSelectedWithHeight();
@@ -517,7 +277,9 @@ public class MainActivity extends Activity {
     private void onFramerateChanged(int selectedPosition, String rate) {
         String codecName = getSelectedVideoCodec();
         MediaCodecInfo codec = getVideoCodecInfo(codecName);
-        if (codec == null) return;
+        if (codec == null) {
+            return;
+        }
         MediaCodecInfo.CodecCapabilities capabilities = codec.getCapabilitiesForType(VIDEO_AVC);
         MediaCodecInfo.VideoCapabilities videoCapabilities = capabilities.getVideoCapabilities();
         int[] selectedWithHeight = getSelectedWithHeight();
@@ -548,7 +310,6 @@ public class MainActivity extends Activity {
         resetAvcProfileLevelAdapter(capabilities);
     }
 
-
     private void resetAvcProfileLevelAdapter(MediaCodecInfo.CodecCapabilities capabilities) {
         MediaCodecInfo.CodecProfileLevel[] profiles = capabilities.profileLevels;
         if (profiles == null || profiles.length == 0) {
@@ -564,7 +325,8 @@ public class MainActivity extends Activity {
 
         SpinnerAdapter old = mVideoProfileLevel.getAdapter();
         if (old == null || !(old instanceof ArrayAdapter)) {
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
+            ArrayAdapter<String> adapter =
+                    new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             adapter.addAll(profileLevels);
             mVideoProfileLevel.setAdapter(adapter);
@@ -597,7 +359,8 @@ public class MainActivity extends Activity {
         String[] profiles = Utils.aacProfiles();
         SpinnerAdapter old = mAudioProfile.getAdapter();
         if (old == null || !(old instanceof ArrayAdapter)) {
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
+            ArrayAdapter<String> adapter =
+                    new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             adapter.addAll(profiles);
             mAudioProfile.setAdapter(adapter);
@@ -625,7 +388,8 @@ public class MainActivity extends Activity {
 
         SpinnerAdapter old = mAudioSampleRate.getAdapter();
         if (old == null || !(old instanceof ArrayAdapter)) {
-            ArrayAdapter<Integer> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
+            ArrayAdapter<Integer> adapter =
+                    new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             adapter.addAll(rates);
             mAudioSampleRate.setAdapter(adapter);
@@ -651,7 +415,8 @@ public class MainActivity extends Activity {
 
         SpinnerAdapter old = mAudioBitrate.getAdapter();
         if (old == null || !(old instanceof ArrayAdapter)) {
-            ArrayAdapter<Integer> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
+            ArrayAdapter<Integer> adapter =
+                    new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             adapter.addAll(rates);
             mAudioBitrate.setAdapter(adapter);
@@ -666,7 +431,9 @@ public class MainActivity extends Activity {
     }
 
     private MediaCodecInfo getVideoCodecInfo(String codecName) {
-        if (codecName == null) return null;
+        if (codecName == null) {
+            return null;
+        }
         if (mAvcCodecInfos == null) {
             mAvcCodecInfos = Utils.findEncodersByType(VIDEO_AVC);
         }
@@ -678,12 +445,16 @@ public class MainActivity extends Activity {
                 break;
             }
         }
-        if (codec == null) return null;
+        if (codec == null) {
+            return null;
+        }
         return codec;
     }
 
     private MediaCodecInfo getAudioCodecInfo(String codecName) {
-        if (codecName == null) return null;
+        if (codecName == null) {
+            return null;
+        }
         if (mAacCodecInfos == null) {
             mAacCodecInfos = Utils.findEncodersByType(AUDIO_AAC);
         }
@@ -695,7 +466,9 @@ public class MainActivity extends Activity {
                 break;
             }
         }
-        if (codec == null) return null;
+        if (codec == null) {
+            return null;
+        }
         return codec;
     }
 
@@ -704,7 +477,8 @@ public class MainActivity extends Activity {
     }
 
     private SpinnerAdapter createCodecsAdapter(MediaCodecInfo[] codecInfos) {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, codecInfoNames(codecInfos));
+        ArrayAdapter<String> adapter =
+                new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, codecInfoNames(codecInfos));
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         return adapter;
     }
@@ -714,12 +488,16 @@ public class MainActivity extends Activity {
     }
 
     private int getSelectedFramerate() {
-        if (mVideoFramerate == null) throw new IllegalStateException();
+        if (mVideoFramerate == null) {
+            throw new IllegalStateException();
+        }
         return Integer.parseInt(mVideoFramerate.getSelectedItem());
     }
 
     private int getSelectedVideoBitrate() {
-        if (mVideoBitrate == null) throw new IllegalStateException();
+        if (mVideoBitrate == null) {
+            throw new IllegalStateException();
+        }
         String selectedItem = mVideoBitrate.getSelectedItem(); //kbps
         return Integer.parseInt(selectedItem) * 1000;
     }
@@ -733,10 +511,14 @@ public class MainActivity extends Activity {
     }
 
     private int[] getSelectedWithHeight() {
-        if (mVieoResolution == null) throw new IllegalStateException();
+        if (mVieoResolution == null) {
+            throw new IllegalStateException();
+        }
         String selected = mVieoResolution.getSelectedItem();
         String[] xes = selected.split("x");
-        if (xes.length != 2) throw new IllegalArgumentException();
+        if (xes.length != 2) {
+            throw new IllegalArgumentException();
+        }
         return new int[]{Integer.parseInt(xes[0]), Integer.parseInt(xes[1])};
 
     }
@@ -746,43 +528,36 @@ public class MainActivity extends Activity {
     }
 
     private int getSelectedAudioBitrate() {
-        if (mAudioBitrate == null) throw new IllegalStateException();
+        if (mAudioBitrate == null) {
+            throw new IllegalStateException();
+        }
         Integer selectedItem = mAudioBitrate.getSelectedItem();
         return selectedItem * 1000; // bps
     }
 
     private int getSelectedAudioSampleRate() {
-        if (mAudioSampleRate == null) throw new IllegalStateException();
+        if (mAudioSampleRate == null) {
+            throw new IllegalStateException();
+        }
         Integer selectedItem = mAudioSampleRate.getSelectedItem();
         return selectedItem;
     }
 
     private int getSelectedAudioProfile() {
-        if (mAudioProfile == null) throw new IllegalStateException();
+        if (mAudioProfile == null) {
+            throw new IllegalStateException();
+        }
         String selectedItem = mAudioProfile.getSelectedItem();
         MediaCodecInfo.CodecProfileLevel profileLevel = Utils.toProfileLevel(selectedItem);
         return profileLevel == null ? MediaCodecInfo.CodecProfileLevel.AACObjectMain : profileLevel.profile;
     }
 
     private int getSelectedAudioChannelCount() {
-        if (mAudioChannelCount == null) throw new IllegalStateException();
+        if (mAudioChannelCount == null) {
+            throw new IllegalStateException();
+        }
         String selectedItem = mAudioChannelCount.getSelectedItem().toString();
         return Integer.parseInt(selectedItem);
-    }
-
-    private void toast(String message, Object... args) {
-
-        int length_toast = Locale.getDefault().getCountry().equals("BR") ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT;
-        // In Brazilian Portuguese this may take longer to read
-
-        Toast toast = Toast.makeText(this,
-                (args.length == 0) ? message : String.format(Locale.US, message, args),
-                length_toast);
-        if (Looper.myLooper() != Looper.getMainLooper()) {
-            runOnUiThread(toast::show);
-        } else {
-            toast.show();
-        }
     }
 
     private static String[] codecInfoNames(MediaCodecInfo[] codecInfos) {
@@ -882,41 +657,57 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void stopRecordingAndOpenFile(Context context) {
-        File file = new File(mRecorder.getSavedPath());
-        stopRecorder();
-        Toast.makeText(context, getString(R.string.recorder_stopped_saved_file) + " " + file, Toast.LENGTH_LONG).show();
-        StrictMode.VmPolicy vmPolicy = StrictMode.getVmPolicy();
-        try {
-            // disable detecting FileUriExposure on public file
-            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
-            viewResult(file);
-        } finally {
-            StrictMode.setVmPolicy(vmPolicy);
+    @Override
+    public AudioEncodeConfig createAudioConfig() {
+        if (!mAudioToggle.isChecked()) {
+            return null;
         }
+        String codec = getSelectedAudioCodec();
+        if (codec == null) {
+            return null;
+        }
+        int bitrate = getSelectedAudioBitrate();
+        int samplerate = getSelectedAudioSampleRate();
+        int channelCount = getSelectedAudioChannelCount();
+        int profile = getSelectedAudioProfile();
+
+        return new AudioEncodeConfig(codec, AUDIO_AAC, bitrate, samplerate, channelCount, profile);
     }
 
-    private void viewResult(File file) {
-        Intent view = new Intent(Intent.ACTION_VIEW);
-        view.addCategory(Intent.CATEGORY_DEFAULT);
-        view.setDataAndType(Uri.fromFile(file), VIDEO_AVC);
-        view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try {
-            startActivity(view);
-        } catch (ActivityNotFoundException e) {
-            // no activity can open this video
+    public VideoEncodeConfig createVideoConfig() {
+        final String codec = getSelectedVideoCodec();
+        if (codec == null) {
+            // no selected codec ??
+            return null;
         }
+        // video size
+        int[] selectedWithHeight = getSelectedWithHeight();
+        boolean isLandscape = isLandscape();
+        int width = selectedWithHeight[isLandscape ? 0 : 1];
+        int height = selectedWithHeight[isLandscape ? 1 : 0];
+        int framerate = getSelectedFramerate();
+        int iframe = getSelectedIFrameInterval();
+        int bitrate = getSelectedVideoBitrate();
+        MediaCodecInfo.CodecProfileLevel profileLevel = getSelectedProfileLevel();
+        return new VideoEncodeConfig(width, height, bitrate,
+                framerate, iframe, codec, VIDEO_AVC, profileLevel);
     }
 
-    static final String ACTION_STOP = BuildConfig.APPLICATION_ID + ".action.STOP";
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        saveSelections();
+    }
 
-    private BroadcastReceiver mStopActionReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (ACTION_STOP.equals(intent.getAction())) {
-                stopRecordingAndOpenFile(context);
-            }
-        }
-    };
+    @Override
+    public void startRecorder() {
+        super.startRecorder();
+        mButton.setText(getString(R.string.stop_recorder));
+    }
 
+    @Override
+    public void stopRecorder() {
+        super.stopRecorder();
+        mButton.setText(getString(R.string.restart_recorder));
+    }
 }
