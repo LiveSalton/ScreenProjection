@@ -86,7 +86,7 @@ class BaseRecordActivity extends Activity {
         VideoEncodeConfig video = createVideoConfig();
         AudioEncodeConfig audio = createAudioConfig(); // audio can be null
         if (video == null) {
-            toast(getString(R.string.create_screenRecorder_failure));
+            XApp.toast(getString(R.string.create_screenRecorder_failure));
             return;
         }
 
@@ -137,7 +137,7 @@ class BaseRecordActivity extends Activity {
             public void onStop(Throwable error) {
                 runOnUiThread(() -> stopRecorder());
                 if (error != null) {
-                    toast("Recorder error ! See logcat for more details");
+                    XApp.toast("Recorder error ! See logcat for more details");
                     error.printStackTrace();
                     output.delete();
                 } else {
@@ -290,7 +290,4 @@ class BaseRecordActivity extends Activity {
         }
     };
 
-    public static void toast(String message, Object... args) {
-        ToastUtils.show((args.length == 0) ? message : String.format(message, args));
-    }
 }

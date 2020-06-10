@@ -46,7 +46,6 @@ import static net.yrom.screenrecorder.ScreenRecorder.AUDIO_AAC;
 import static net.yrom.screenrecorder.ScreenRecorder.VIDEO_AVC;
 
 public class MainActivity extends BaseRecordActivity {
-
     private Button mButton;
     private ToggleButton mAudioToggle;
     private NamedSpinner mVieoResolution;
@@ -113,7 +112,7 @@ public class MainActivity extends BaseRecordActivity {
             if (granted == PackageManager.PERMISSION_GRANTED) {
                 requestMediaProjection();
             } else {
-                toast(getString(R.string.no_permission));
+                XApp.toast(getString(R.string.no_permission));
             }
         }
     }
@@ -128,7 +127,7 @@ public class MainActivity extends BaseRecordActivity {
             } else if (Build.VERSION.SDK_INT >= M) {
                 requestPermissions();
             } else {
-                toast(getString(R.string.no_permission_to_write_sd_ard));
+                XApp.toast(getString(R.string.no_permission_to_write_sd_ard));
             }
         });
 
@@ -215,14 +214,14 @@ public class MainActivity extends BaseRecordActivity {
         int resetPos = Math.max(selectedPosition - 1, 0);
         if (!videoCapabilities.isSizeSupported(width, height)) {
             mVieoResolution.setSelectedPosition(resetPos);
-            toast(getString(R.string.codec_unsupported_size),
+            XApp.toast(getString(R.string.codec_unsupported_size),
                     codecName, width, height, mOrientation.getSelectedItem());
             Log.w("@@", codecName +
                     " height range: " + videoCapabilities.getSupportedHeights() +
                     "\n width range: " + videoCapabilities.getSupportedHeights());
         } else if (!videoCapabilities.areSizeAndRateSupported(width, height, selectedFramerate)) {
             mVieoResolution.setSelectedPosition(resetPos);
-            toast(getString(R.string.codec_unsupported_size_with_framerate),
+            XApp.toast(getString(R.string.codec_unsupported_size_with_framerate),
                     codecName, width, height, mOrientation.getSelectedItem(), (int) selectedFramerate);
         }
     }
@@ -240,7 +239,7 @@ public class MainActivity extends BaseRecordActivity {
         int resetPos = Math.max(selectedPosition - 1, 0);
         if (!videoCapabilities.getBitrateRange().contains(selectedBitrate)) {
             mVideoBitrate.setSelectedPosition(resetPos);
-            toast(getString(R.string.codec_unsupported_bitrate), codecName, selectedBitrate);
+            XApp.toast(getString(R.string.codec_unsupported_bitrate), codecName, selectedBitrate);
             Log.w("@@", codecName +
                     " bitrate range: " + videoCapabilities.getBitrateRange());
         }
@@ -261,7 +260,7 @@ public class MainActivity extends BaseRecordActivity {
         int resetPos = Math.max(mVieoResolution.getSelectedItemPosition() - 1, 0);
         if (!videoCapabilities.isSizeSupported(width, height)) {
             mVieoResolution.setSelectedPosition(resetPos);
-            toast(getString(R.string.codec_unsupported_size),
+            XApp.toast(getString(R.string.codec_unsupported_size),
                     codecName, width, height, orientation);
             return;
         }
@@ -291,10 +290,10 @@ public class MainActivity extends BaseRecordActivity {
         int resetPos = Math.max(selectedPosition - 1, 0);
         if (!videoCapabilities.getSupportedFrameRates().contains(selectedFramerate)) {
             mVideoFramerate.setSelectedPosition(resetPos);
-            toast(getString(R.string.codec_unsupported_with_framerate), codecName, selectedFramerate);
+            XApp.toast(getString(R.string.codec_unsupported_with_framerate), codecName, selectedFramerate);
         } else if (!videoCapabilities.areSizeAndRateSupported(width, height, selectedFramerate)) {
             mVideoFramerate.setSelectedPosition(resetPos);
-            toast(getString(R.string.codec_unsupported_size_with_framerate),
+            XApp.toast(getString(R.string.codec_unsupported_size_with_framerate),
                     codecName, width, height, selectedFramerate);
         }
     }

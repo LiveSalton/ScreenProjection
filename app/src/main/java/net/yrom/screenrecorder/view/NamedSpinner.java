@@ -80,11 +80,11 @@ public class NamedSpinner extends LinearLayout {
         mTitleView.setTextAppearance(context, textAppearance);
         setName(title);
         LayoutParams titleParams = generateDefaultLayoutParams();
-        float _16 = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16f, context.getResources().getDisplayMetrics());
+        float _16 =
+                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16f, context.getResources().getDisplayMetrics());
         titleParams.setMarginEnd(Math.round(_16));
         addViewInLayout(mTitleView, -1, titleParams, true);
         addViewInLayout(mSpinner, -1, generateDefaultLayoutParams(), true);
-
         a.recycle();
     }
 
@@ -125,7 +125,6 @@ public class NamedSpinner extends LinearLayout {
             mListener.onItemSelected(this, position);
         }
     }
-
 
     public interface OnItemSelectedListener {
         void onItemSelected(NamedSpinner view, int position);
