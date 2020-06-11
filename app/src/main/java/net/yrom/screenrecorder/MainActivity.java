@@ -18,10 +18,12 @@ package net.yrom.screenrecorder;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -31,6 +33,7 @@ import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -42,7 +45,13 @@ import android.widget.SpinnerAdapter;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.salton123.log.XLog;
+
+import net.yrom.screenrecorder.callback.Callback;
+import net.yrom.screenrecorder.callback.ProjectionServiceConnection;
 import net.yrom.screenrecorder.view.NamedSpinner;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -74,7 +83,18 @@ public class MainActivity extends Activity implements RecordCallback {
     private NamedSpinner mOrientation;
     private MediaCodecInfo[] mAvcCodecInfos; // avc codecs
     private MediaCodecInfo[] mAacCodecInfos; // aac codecs
-    private BaseRecordService mService;
+    private RecordService mService;
+
+    private ProjectionServiceConnection mConnection = new ProjectionServiceConnection(new Callback() {
+        @Override
+        public void onConnected(boolean isConnected, @Nullable IBinder binder,
+                                @Nullable ServiceConnection connection) {
+            if (isConnected && binder != null) {
+                mService = ((RecordService.InnerBinder) binder).getService();
+                mService.setRecordCallback(MainActivity.this);
+            }
+        }
+    });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,8 +119,8 @@ public class MainActivity extends Activity implements RecordCallback {
         mAudioToggle.setChecked(
                 PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
                         .getBoolean(getResources().getResourceEntryName(mAudioToggle.getId()), true));
-        // mService = new BaseRecordService();
-        startService(new Intent(this, BaseRecordService.class));
+        bindService(new Intent(this, RecordService.class),
+                mConnection, Service.BIND_AUTO_CREATE);
     }
 
     @Override
@@ -133,18 +153,26 @@ public class MainActivity extends Activity implements RecordCallback {
     }
 
     public void stopRecordingAndOpenFile(Context context) {
-        File file = new File(mService.mRecorder.getSavedPath());
-        mService.stopRecorder();
-        Toast.makeText(context, getString(R.string.recorder_stopped_saved_file) + " " + file, Toast.LENGTH_LONG).show();
-        StrictMode.VmPolicy vmPolicy = StrictMode.getVmPolicy();
-        try {
-            // disable detecting FileUriExposure on public file
-            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
-            viewResult(file);
-        } finally {
-            StrictMode.setVmPolicy(vmPolicy);
+        if (mService != null) {
+            File file = new File(mService.mRecorder.getSavedPath());
+            mService.stopRecorder();
+
+            Toast.makeText(context, getString(R.string.recorder_stopped_saved_file) + " " + file, Toast.LENGTH_LONG)
+                    .show();
+            StrictMode.VmPolicy vmPolicy = StrictMode.getVmPolicy();
+            try {
+                // disable detecting FileUriExposure on public file
+                StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+                viewResult(file);
+            } finally {
+                StrictMode.setVmPolicy(vmPolicy);
+            }
+        } else {
+            XLog.e(TAG, "mService == null");
         }
     }
+
+    private static final String TAG = "MainActivity";
 
     private void viewResult(File file) {
         Intent view = new Intent(Intent.ACTION_VIEW);
@@ -168,17 +196,21 @@ public class MainActivity extends Activity implements RecordCallback {
     };
 
     public void toCapture() {
-        if (mService.mMediaProjection == null) {
-            requestMediaProjection();
+        if (mService != null) {
+            if (mService.mMediaProjection == null) {
+                requestMediaProjection();
+            } else {
+                mService.startCapturing(mService.mMediaProjection);
+            }
         } else {
-            mService.startCapturing(mService.mMediaProjection);
+            XLog.e(TAG, "mService == null");
         }
     }
 
     private void bindViews() {
         mButton = findViewById(R.id.record_button);
         mButton.setOnClickListener(v -> {
-            if (mService.isRecording) {
+            if (mService != null && mService.isRecording) {
                 stopRecordingAndOpenFile(v.getContext());
             } else if (hasPermissions()) {
                 toCapture();
@@ -790,6 +822,12 @@ public class MainActivity extends Activity implements RecordCallback {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        mService.onBundle(resultCode, data);
+        if (mService != null) {
+            mService.setAudioEncodeConfig(createAudioConfig());
+            mService.setVideoEncodeConfig(createVideoConfig());
+            mService.onBundle(resultCode, data);
+        } else {
+            XLog.e(TAG, "mService == null");
+        }
     }
 }
