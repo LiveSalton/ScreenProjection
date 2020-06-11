@@ -203,7 +203,7 @@ public class MainActivity extends Activity implements RecordCallback {
         mButton.setOnClickListener(v -> {
             if (mService != null && mService.isRecording) {
                 stopRecordingAndOpenFile(v.getContext());
-            } else if (hasPermissions()) {
+            } else if (XApp.hasPermissions()) {
                 if (mService != null) {
                     if (mProjectionProp == null) {
                         requestMediaProjection();
@@ -793,14 +793,6 @@ public class MainActivity extends Activity implements RecordCallback {
                 (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
         Intent captureIntent = mMediaProjectionManager.createScreenCaptureIntent();
         startActivityForResult(captureIntent, REQUEST_MEDIA_PROJECTION);
-    }
-
-    public boolean hasPermissions() {
-        PackageManager pm = getPackageManager();
-        String packageName = getPackageName();
-        int granted = pm.checkPermission(RECORD_AUDIO, packageName)
-                | pm.checkPermission(WRITE_EXTERNAL_STORAGE, packageName);
-        return granted == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override

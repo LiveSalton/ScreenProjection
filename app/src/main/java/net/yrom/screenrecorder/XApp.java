@@ -1,7 +1,12 @@
 package net.yrom.screenrecorder;
 
+import android.content.pm.PackageManager;
+
 import com.hjq.toast.ToastUtils;
 import com.salton123.app.BaseApplication;
+
+import static android.Manifest.permission.RECORD_AUDIO;
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 /**
  * User: wujinsheng1@yy.com
@@ -23,6 +28,14 @@ public class XApp extends BaseApplication {
 
     public static void toast(String message, Object... args) {
         ToastUtils.show((args.length == 0) ? message : String.format(message, args));
+    }
+
+    public static boolean hasPermissions() {
+        PackageManager pm = BaseApplication.sInstance.getPackageManager();
+        String packageName = BaseApplication.sInstance.getPackageName();
+        int granted = pm.checkPermission(RECORD_AUDIO, packageName)
+                | pm.checkPermission(WRITE_EXTERNAL_STORAGE, packageName);
+        return granted == PackageManager.PERMISSION_GRANTED;
     }
 
 }

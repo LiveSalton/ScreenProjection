@@ -2,7 +2,6 @@ package net.yrom.screenrecorder;
 
 import android.app.Service;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Point;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -12,7 +11,6 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.blankj.utilcode.util.FileUtils;
 import com.salton123.log.XLog;
@@ -23,8 +21,6 @@ import java.io.File;
 
 import androidx.annotation.Nullable;
 
-import static android.Manifest.permission.RECORD_AUDIO;
-import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static com.blankj.utilcode.util.ThreadUtils.runOnUiThread;
 
 /**
@@ -75,27 +71,15 @@ public class RecordService extends Service {
         ForegroundNotificationUtils.startForegroundNotification(this);
         VideoEncodeConfig video = prop.getVideoEncodeConfig();
         AudioEncodeConfig audio = prop.getAudioEncodeConfig(); // audio can be null
-        if (video == null) {
-            XApp.toast(getString(R.string.create_screenRecorder_failure));
-            return;
-        }
         File saveFile = new File(prop.getSavePath());
         FileUtils.createFileByDeleteOldFile(saveFile);
         mRecorder = newRecorder(mMediaProjection, video, audio, saveFile);
-        if (hasPermissions()) {
+        if (XApp.hasPermissions()) {
             startRecorder();
             isRecording = true;
         } else {
             cancelRecorder();
         }
-    }
-
-    public boolean hasPermissions() {
-        PackageManager pm = getPackageManager();
-        String packageName = getPackageName();
-        int granted = pm.checkPermission(RECORD_AUDIO, packageName)
-                | pm.checkPermission(WRITE_EXTERNAL_STORAGE, packageName);
-        return granted == PackageManager.PERMISSION_GRANTED;
     }
 
     private MediaProjection.Callback mProjectionCallback = new MediaProjection.Callback() {
@@ -112,8 +96,6 @@ public class RecordService extends Service {
         final VirtualDisplay display = getOrCreateVirtualDisplay(mediaProjection, video);
         ScreenRecorder r = new ScreenRecorder(video, audio, display, output.getAbsolutePath());
         r.setCallback(new ScreenRecorder.Callback() {
-            // long startTime = 0;
-
             @Override
             public void onStop(Throwable error) {
                 runOnUiThread(() -> stopRecorder());
@@ -157,18 +139,6 @@ public class RecordService extends Service {
         }
         return mVirtualDisplay;
     }
-
-    public void setAudioEncodeConfig(AudioEncodeConfig config) {
-        this.mAudioEncodeConfig = config;
-    }
-
-    public void setVideoEncodeConfig(VideoEncodeConfig config) {
-        this.mVideoEncodeConfig = config;
-    }
-
-    private AudioEncodeConfig mAudioEncodeConfig;
-
-    private VideoEncodeConfig mVideoEncodeConfig;
 
     @Override
     public void onDestroy() {
@@ -228,11 +198,10 @@ public class RecordService extends Service {
     }
 
     private void cancelRecorder() {
-
         if (mRecorder == null) {
             return;
         }
-        Toast.makeText(this, getString(R.string.permission_denied_screen_recorder_cancel), Toast.LENGTH_SHORT).show();
+        XApp.toast(getString(R.string.permission_denied_screen_recorder_cancel));
         stopRecorder();
     }
 
