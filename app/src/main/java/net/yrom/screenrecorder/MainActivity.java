@@ -29,6 +29,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.media.MediaCodecInfo;
+import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
@@ -45,7 +46,6 @@ import android.widget.SpinnerAdapter;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-import com.blankj.utilcode.util.FileUtils;
 import com.salton123.log.XLog;
 
 import net.yrom.screenrecorder.bean.ProjectionProp;
@@ -208,6 +208,8 @@ public class MainActivity extends Activity implements RecordCallback {
                     if (mProjectionProp == null) {
                         requestMediaProjection();
                     } else {
+                        mProjectionProp.setAudioEncodeConfig(createAudioConfig());
+                        mProjectionProp.setVideoEncodeConfig(createVideoConfig());
                         mService.startCapturing(mProjectionProp);
                     }
                 } else {
@@ -841,11 +843,13 @@ public class MainActivity extends Activity implements RecordCallback {
         if (mService != null) {
             MediaProjectionManager mMediaProjectionManager =
                     (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
-            mProjectionProp = new ProjectionProp(data,
-                    mMediaProjectionManager.getMediaProjection(Activity.RESULT_OK, data),
+            MediaProjection mediaProjection = mMediaProjectionManager.getMediaProjection(Activity.RESULT_OK, data);
+            mProjectionProp = new ProjectionProp(
                     createAudioConfig(),
-                    createVideoConfig(), createSavePath());
-            mService.onBundle(mProjectionProp);
+                    createVideoConfig(),
+                    createSavePath());
+            mService.onBundle(mediaProjection);
+            mService.startCapturing(mProjectionProp);
         } else {
             XLog.e(TAG, "mService == null");
         }

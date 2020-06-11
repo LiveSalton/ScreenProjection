@@ -35,7 +35,6 @@ import static com.blankj.utilcode.util.ThreadUtils.runOnUiThread;
  * Description:
  */
 public class RecordService extends Service {
-    private MediaProjectionManager mMediaProjectionManager;
     public ScreenRecorder mRecorder;
     public MediaProjection mMediaProjection;
     private VirtualDisplay mVirtualDisplay;
@@ -45,8 +44,6 @@ public class RecordService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        mMediaProjectionManager =
-                (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
         mNotifications = new Notifications(getApplicationContext());
         XLog.i(TAG, "onCreate");
     }
@@ -63,17 +60,13 @@ public class RecordService extends Service {
         return super.onStartCommand(intent, flags, startId);
     }
 
-    public ProjectionProp mProp;
-
-    public void onBundle(ProjectionProp prop) {
-        this.mProp = prop;
-        mMediaProjection = prop.getMediaProjection();
+    public void onBundle(MediaProjection mediaProjection) {
+        mMediaProjection = mediaProjection;
         if (mMediaProjection == null) {
             Log.e("@@", "media projection is null");
             return;
         }
         mMediaProjection.registerCallback(mProjectionCallback, new Handler());
-        startCapturing(prop);
     }
 
     public boolean isRecording = false;
@@ -85,9 +78,9 @@ public class RecordService extends Service {
             XApp.toast(getString(R.string.create_screenRecorder_failure));
             return;
         }
-        File saveFile = new File(mProp.getSavePath());
+        File saveFile = new File(prop.getSavePath());
         FileUtils.createFileByDeleteOldFile(saveFile);
-        mRecorder = newRecorder(prop.getMediaProjection(), video, audio, saveFile);
+        mRecorder = newRecorder(mMediaProjection, video, audio, saveFile);
         if (hasPermissions()) {
             startRecorder();
             isRecording = true;

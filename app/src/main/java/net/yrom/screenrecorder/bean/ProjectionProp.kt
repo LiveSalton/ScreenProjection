@@ -12,8 +12,6 @@ import net.yrom.screenrecorder.VideoEncodeConfig
  * Description:
  */
 data class ProjectionProp(
-        var data: Intent,
-        var mediaProjection: MediaProjection,
         var audioEncodeConfig: AudioEncodeConfig,
         var videoEncodeConfig: VideoEncodeConfig,
         var savePath: String
