@@ -7,7 +7,6 @@ import android.graphics.Point;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.projection.MediaProjection;
-import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Handler;
@@ -38,25 +37,26 @@ public class RecordService extends Service {
     public ScreenRecorder mRecorder;
     public MediaProjection mMediaProjection;
     private VirtualDisplay mVirtualDisplay;
-    private Notifications mNotifications;
     private static final String TAG = "BaseRecordService";
 
     @Override
     public void onCreate() {
         super.onCreate();
-        mNotifications = new Notifications(getApplicationContext());
+        ForegroundNotificationUtils.startForegroundNotification(this);
         XLog.i(TAG, "onCreate");
     }
 
     @Override
     public void onStart(Intent intent, int startId) {
         XLog.i(TAG, "onStart");
+        ForegroundNotificationUtils.startForegroundNotification(this);
         super.onStart(intent, startId);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         XLog.i(TAG, "onStartCommand");
+        ForegroundNotificationUtils.startForegroundNotification(this);
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -72,6 +72,7 @@ public class RecordService extends Service {
     public boolean isRecording = false;
 
     public void startCapturing(ProjectionProp prop) {
+        ForegroundNotificationUtils.startForegroundNotification(this);
         VideoEncodeConfig video = prop.getVideoEncodeConfig();
         AudioEncodeConfig audio = prop.getAudioEncodeConfig(); // audio can be null
         if (video == null) {
@@ -87,7 +88,6 @@ public class RecordService extends Service {
         } else {
             cancelRecorder();
         }
-
     }
 
     public boolean hasPermissions() {
@@ -112,7 +112,7 @@ public class RecordService extends Service {
         final VirtualDisplay display = getOrCreateVirtualDisplay(mediaProjection, video);
         ScreenRecorder r = new ScreenRecorder(video, audio, display, output.getAbsolutePath());
         r.setCallback(new ScreenRecorder.Callback() {
-            long startTime = 0;
+            // long startTime = 0;
 
             @Override
             public void onStop(Throwable error) {
@@ -131,16 +131,11 @@ public class RecordService extends Service {
 
             @Override
             public void onStart() {
-                mNotifications.recording();
             }
 
             @Override
             public void onRecording(long presentationTimeUs) {
-                if (startTime <= 0) {
-                    startTime = presentationTimeUs;
-                }
-                long time = (presentationTimeUs - startTime) / 1000;
-                mNotifications.recording();
+                ForegroundNotificationUtils.startForegroundNotification(RecordService.this);
             }
         });
         return r;
@@ -221,10 +216,10 @@ public class RecordService extends Service {
     }
 
     public void stopRecorder() {
+        ForegroundNotificationUtils.deleteForegroundNotification(this);
         if (mRecordCallback != null) {
             mRecordCallback.onStopRecord();
         }
-        mNotifications.clear();
         if (mRecorder != null) {
             mRecorder.quit();
         }
