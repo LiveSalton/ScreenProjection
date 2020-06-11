@@ -16,14 +16,22 @@
 package net.yrom.screenrecorder;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.media.MediaCodecInfo;
+import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.Range;
@@ -31,10 +39,12 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.SpinnerAdapter;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import net.yrom.screenrecorder.view.NamedSpinner;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,7 +55,8 @@ import static android.os.Build.VERSION_CODES.M;
 import static net.yrom.screenrecorder.ScreenRecorder.AUDIO_AAC;
 import static net.yrom.screenrecorder.ScreenRecorder.VIDEO_AVC;
 
-public class MainActivity extends BaseRecordActivity {
+public class MainActivity extends Activity implements RecordCallback {
+    private static final int REQUEST_MEDIA_PROJECTION = 1;
     private static final int REQUEST_PERMISSIONS = 2;
     private Button mButton;
     private ToggleButton mAudioToggle;
@@ -63,6 +74,7 @@ public class MainActivity extends BaseRecordActivity {
     private NamedSpinner mOrientation;
     private MediaCodecInfo[] mAvcCodecInfos; // avc codecs
     private MediaCodecInfo[] mAacCodecInfos; // aac codecs
+    private BaseRecordService mService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +99,8 @@ public class MainActivity extends BaseRecordActivity {
         mAudioToggle.setChecked(
                 PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
                         .getBoolean(getResources().getResourceEntryName(mAudioToggle.getId()), true));
+        // mService = new BaseRecordService();
+        startService(new Intent(this, BaseRecordService.class));
     }
 
     @Override
@@ -118,10 +132,53 @@ public class MainActivity extends BaseRecordActivity {
         }
     }
 
+    public void stopRecordingAndOpenFile(Context context) {
+        File file = new File(mService.mRecorder.getSavedPath());
+        mService.stopRecorder();
+        Toast.makeText(context, getString(R.string.recorder_stopped_saved_file) + " " + file, Toast.LENGTH_LONG).show();
+        StrictMode.VmPolicy vmPolicy = StrictMode.getVmPolicy();
+        try {
+            // disable detecting FileUriExposure on public file
+            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+            viewResult(file);
+        } finally {
+            StrictMode.setVmPolicy(vmPolicy);
+        }
+    }
+
+    private void viewResult(File file) {
+        Intent view = new Intent(Intent.ACTION_VIEW);
+        view.addCategory(Intent.CATEGORY_DEFAULT);
+        view.setDataAndType(Uri.fromFile(file), VIDEO_AVC);
+        view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(view);
+        } catch (Exception e) {
+            // no activity can open this video
+        }
+    }
+
+    private BroadcastReceiver mStopActionReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (XApp.ACTION_STOP.equals(intent.getAction())) {
+                stopRecordingAndOpenFile(context);
+            }
+        }
+    };
+
+    public void toCapture() {
+        if (mService.mMediaProjection == null) {
+            requestMediaProjection();
+        } else {
+            mService.startCapturing(mService.mMediaProjection);
+        }
+    }
+
     private void bindViews() {
         mButton = findViewById(R.id.record_button);
         mButton.setOnClickListener(v -> {
-            if (isRecording) {
+            if (mService.isRecording) {
                 stopRecordingAndOpenFile(v.getContext());
             } else if (hasPermissions()) {
                 toCapture();
@@ -657,7 +714,6 @@ public class MainActivity extends BaseRecordActivity {
         }
     }
 
-    @Override
     public AudioEncodeConfig createAudioConfig() {
         if (!mAudioToggle.isChecked()) {
             return null;
@@ -699,15 +755,41 @@ public class MainActivity extends BaseRecordActivity {
         saveSelections();
     }
 
-    @Override
-    public void startRecorder() {
-        super.startRecorder();
-        mButton.setText(getString(R.string.stop_recorder));
+    void requestMediaProjection() {
+        MediaProjectionManager mMediaProjectionManager =
+                (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
+        Intent captureIntent = mMediaProjectionManager.createScreenCaptureIntent();
+        startActivityForResult(captureIntent, REQUEST_MEDIA_PROJECTION);
+    }
+
+    public boolean hasPermissions() {
+        PackageManager pm = getPackageManager();
+        String packageName = getPackageName();
+        int granted = pm.checkPermission(RECORD_AUDIO, packageName)
+                | pm.checkPermission(WRITE_EXTERNAL_STORAGE, packageName);
+        return granted == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
-    public void stopRecorder() {
-        super.stopRecorder();
+    public void onStartRecord() {
+        mButton.setText(getString(R.string.stop_recorder));
+        moveTaskToBack(true);
+        registerReceiver(mStopActionReceiver, new IntentFilter(XApp.ACTION_STOP));
+    }
+
+    @Override
+    public void onStopRecord() {
         mButton.setText(getString(R.string.restart_recorder));
+        try {
+            unregisterReceiver(mStopActionReceiver);
+        } catch (Exception e) {
+            //ignored
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        mService.onBundle(resultCode, data);
     }
 }

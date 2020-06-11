@@ -1,10 +1,7 @@
 package net.yrom.screenrecorder;
 
-import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
+import android.app.Service;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Point;
 import android.hardware.display.DisplayManager;
@@ -12,12 +9,13 @@ import android.hardware.display.VirtualDisplay;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.StrictMode;
+import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
+
+import com.salton123.log.XLog;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -28,7 +26,7 @@ import androidx.annotation.Nullable;
 
 import static android.Manifest.permission.RECORD_AUDIO;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
-import static net.yrom.screenrecorder.ScreenRecorder.VIDEO_AVC;
+import static com.blankj.utilcode.util.ThreadUtils.runOnUiThread;
 
 /**
  * User: wujinsheng1@yy.com
@@ -36,35 +34,43 @@ import static net.yrom.screenrecorder.ScreenRecorder.VIDEO_AVC;
  * ModifyTime: 20:28
  * Description:
  */
-class BaseRecordActivity extends Activity {
-    private static final int REQUEST_MEDIA_PROJECTION = 1;
+class BaseRecordService extends Service {
     private MediaProjectionManager mMediaProjectionManager;
-    private ScreenRecorder mRecorder;
-    private MediaProjection mMediaProjection;
+    public ScreenRecorder mRecorder;
+    public MediaProjection mMediaProjection;
     private VirtualDisplay mVirtualDisplay;
     private Notifications mNotifications;
+    private static final String TAG = "BaseRecordService";
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onCreate() {
+        super.onCreate();
         mMediaProjectionManager =
                 (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
         mNotifications = new Notifications(getApplicationContext());
+        XLog.i(TAG, "onCreate");
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_MEDIA_PROJECTION) {
-            MediaProjection mediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, data);
-            if (mediaProjection == null) {
-                Log.e("@@", "media projection is null");
-                return;
-            }
+    public void onStart(Intent intent, int startId) {
+        XLog.i(TAG, "onStart");
+        super.onStart(intent, startId);
+    }
 
-            mMediaProjection = mediaProjection;
-            mMediaProjection.registerCallback(mProjectionCallback, new Handler());
-            startCapturing(mediaProjection);
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        XLog.i(TAG, "onStartCommand");
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    public void onBundle(int resultCode, Intent data) {
+        mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, data);
+        if (mMediaProjection == null) {
+            Log.e("@@", "media projection is null");
+            return;
         }
+        mMediaProjection.registerCallback(mProjectionCallback, new Handler());
+        startCapturing(mMediaProjection);
     }
 
     public boolean isRecording = false;
@@ -182,17 +188,10 @@ class BaseRecordActivity extends Activity {
                 "Screenshots");
     }
 
-    public void toCapture() {
-        if (mMediaProjection == null) {
-            requestMediaProjection();
-        } else {
-            startCapturing(mMediaProjection);
-        }
-    }
-
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         super.onDestroy();
+        XLog.i(TAG, "onDestroy");
         stopRecorder();
         if (mVirtualDisplay != null) {
             mVirtualDisplay.setSurface(null);
@@ -206,9 +205,10 @@ class BaseRecordActivity extends Activity {
         }
     }
 
-    void requestMediaProjection() {
-        Intent captureIntent = mMediaProjectionManager.createScreenCaptureIntent();
-        startActivityForResult(captureIntent, REQUEST_MEDIA_PROJECTION);
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
 
     public void startRecorder() {
@@ -216,8 +216,6 @@ class BaseRecordActivity extends Activity {
             return;
         }
         mRecorder.start();
-        registerReceiver(mStopActionReceiver, new IntentFilter(XApp.ACTION_STOP));
-        moveTaskToBack(true);
     }
 
     public void stopRecorder() {
@@ -226,11 +224,6 @@ class BaseRecordActivity extends Activity {
             mRecorder.quit();
         }
         mRecorder = null;
-        try {
-            unregisterReceiver(mStopActionReceiver);
-        } catch (Exception e) {
-            //ignored
-        }
         isRecording = false;
     }
 
@@ -241,40 +234,5 @@ class BaseRecordActivity extends Activity {
         Toast.makeText(this, getString(R.string.permission_denied_screen_recorder_cancel), Toast.LENGTH_SHORT).show();
         stopRecorder();
     }
-
-    public void stopRecordingAndOpenFile(Context context) {
-        File file = new File(mRecorder.getSavedPath());
-        stopRecorder();
-        Toast.makeText(context, getString(R.string.recorder_stopped_saved_file) + " " + file, Toast.LENGTH_LONG).show();
-        StrictMode.VmPolicy vmPolicy = StrictMode.getVmPolicy();
-        try {
-            // disable detecting FileUriExposure on public file
-            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
-            viewResult(file);
-        } finally {
-            StrictMode.setVmPolicy(vmPolicy);
-        }
-    }
-
-    private void viewResult(File file) {
-        Intent view = new Intent(Intent.ACTION_VIEW);
-        view.addCategory(Intent.CATEGORY_DEFAULT);
-        view.setDataAndType(Uri.fromFile(file), VIDEO_AVC);
-        view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try {
-            startActivity(view);
-        } catch (Exception e) {
-            // no activity can open this video
-        }
-    }
-
-    private BroadcastReceiver mStopActionReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (XApp.ACTION_STOP.equals(intent.getAction())) {
-                stopRecordingAndOpenFile(context);
-            }
-        }
-    };
 
 }

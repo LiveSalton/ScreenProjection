@@ -24,4 +24,5 @@ public class XApp extends BaseApplication {
     public static void toast(String message, Object... args) {
         ToastUtils.show((args.length == 0) ? message : String.format(message, args));
     }
+
 }
