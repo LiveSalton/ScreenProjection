@@ -45,8 +45,10 @@ import android.widget.SpinnerAdapter;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.blankj.utilcode.util.FileUtils;
 import com.salton123.log.XLog;
 
+import net.yrom.screenrecorder.bean.ProjectionProp;
 import net.yrom.screenrecorder.callback.Callback;
 import net.yrom.screenrecorder.callback.ProjectionServiceConnection;
 import net.yrom.screenrecorder.view.NamedSpinner;
@@ -54,9 +56,12 @@ import net.yrom.screenrecorder.view.NamedSpinner;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import static android.Manifest.permission.RECORD_AUDIO;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
@@ -81,8 +86,8 @@ public class MainActivity extends Activity implements RecordCallback {
     private NamedSpinner mVideoProfileLevel;
     private NamedSpinner mAudioProfile;
     private NamedSpinner mOrientation;
-    private MediaCodecInfo[] mAvcCodecInfos; // avc codecs
-    private MediaCodecInfo[] mAacCodecInfos; // aac codecs
+    private MediaCodecInfo[] mAvcCodecInfos;
+    private MediaCodecInfo[] mAacCodecInfos;
     private RecordService mService;
 
     private ProjectionServiceConnection mConnection = new ProjectionServiceConnection(new Callback() {
@@ -107,7 +112,6 @@ public class MainActivity extends Activity implements RecordCallback {
             SpinnerAdapter codecsAdapter = createCodecsAdapter(mAvcCodecInfos);
             mVideoCodec.setAdapter(codecsAdapter);
             restoreSelections(mVideoCodec, mVieoResolution, mVideoFramerate, mIFrameInterval, mVideoBitrate);
-
         });
         Utils.findEncodersByTypeAsync(AUDIO_AAC, infos -> {
             logCodecInfos(infos, AUDIO_AAC);
@@ -154,9 +158,8 @@ public class MainActivity extends Activity implements RecordCallback {
 
     public void stopRecordingAndOpenFile(Context context) {
         if (mService != null) {
-            File file = new File(mService.mRecorder.getSavedPath());
             mService.stopRecorder();
-
+            File file = new File(currentSavePath);
             Toast.makeText(context, getString(R.string.recorder_stopped_saved_file) + " " + file, Toast.LENGTH_LONG)
                     .show();
             StrictMode.VmPolicy vmPolicy = StrictMode.getVmPolicy();
@@ -195,25 +198,21 @@ public class MainActivity extends Activity implements RecordCallback {
         }
     };
 
-    public void toCapture() {
-        if (mService != null) {
-            if (mService.mMediaProjection == null) {
-                requestMediaProjection();
-            } else {
-                mService.startCapturing(mService.mMediaProjection);
-            }
-        } else {
-            XLog.e(TAG, "mService == null");
-        }
-    }
-
     private void bindViews() {
         mButton = findViewById(R.id.record_button);
         mButton.setOnClickListener(v -> {
             if (mService != null && mService.isRecording) {
                 stopRecordingAndOpenFile(v.getContext());
             } else if (hasPermissions()) {
-                toCapture();
+                if (mService != null) {
+                    if (mProjectionProp == null) {
+                        requestMediaProjection();
+                    } else {
+                        mService.startCapturing(mProjectionProp);
+                    }
+                } else {
+                    XLog.e(TAG, "mService == null");
+                }
             } else if (Build.VERSION.SDK_INT >= M) {
                 requestPermissions();
             } else {
@@ -413,7 +412,7 @@ public class MainActivity extends Activity implements RecordCallback {
         }
 
         SpinnerAdapter old = mVideoProfileLevel.getAdapter();
-        if (old == null || !(old instanceof ArrayAdapter)) {
+        if (!(old instanceof ArrayAdapter)) {
             ArrayAdapter<String> adapter =
                     new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -447,7 +446,7 @@ public class MainActivity extends Activity implements RecordCallback {
     private void resetAacProfileAdapter(MediaCodecInfo.CodecCapabilities capabilities) {
         String[] profiles = Utils.aacProfiles();
         SpinnerAdapter old = mAudioProfile.getAdapter();
-        if (old == null || !(old instanceof ArrayAdapter)) {
+        if (!(old instanceof ArrayAdapter)) {
             ArrayAdapter<String> adapter =
                     new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -476,7 +475,7 @@ public class MainActivity extends Activity implements RecordCallback {
         }
 
         SpinnerAdapter old = mAudioSampleRate.getAdapter();
-        if (old == null || !(old instanceof ArrayAdapter)) {
+        if (!(old instanceof ArrayAdapter)) {
             ArrayAdapter<Integer> adapter =
                     new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -819,13 +818,34 @@ public class MainActivity extends Activity implements RecordCallback {
         }
     }
 
+    private String currentSavePath = "";
+
+    private String createSavePath() {
+        int[] selectedWithHeight = getSelectedWithHeight();
+        boolean isLandscape = isLandscape();
+        int width = selectedWithHeight[isLandscape ? 0 : 1];
+        int height = selectedWithHeight[isLandscape ? 1 : 0];
+
+        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
+        String savePath = "/sdcard/z01/Screenshots-" + format.format(new Date())
+                + "-" + width + "x" + height + ".mp4";
+        currentSavePath = savePath;
+        return savePath;
+    }
+
+    ProjectionProp mProjectionProp = null;
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (mService != null) {
-            mService.setAudioEncodeConfig(createAudioConfig());
-            mService.setVideoEncodeConfig(createVideoConfig());
-            mService.onBundle(resultCode, data);
+            MediaProjectionManager mMediaProjectionManager =
+                    (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
+            mProjectionProp = new ProjectionProp(data,
+                    mMediaProjectionManager.getMediaProjection(Activity.RESULT_OK, data),
+                    createAudioConfig(),
+                    createVideoConfig(), createSavePath());
+            mService.onBundle(mProjectionProp);
         } else {
             XLog.e(TAG, "mService == null");
         }

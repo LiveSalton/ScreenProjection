@@ -10,18 +10,17 @@ import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Binder;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.blankj.utilcode.util.FileUtils;
 import com.salton123.log.XLog;
 
+import net.yrom.screenrecorder.bean.ProjectionProp;
+
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 import androidx.annotation.Nullable;
 
@@ -64,36 +63,31 @@ public class RecordService extends Service {
         return super.onStartCommand(intent, flags, startId);
     }
 
-    public void onBundle(int resultCode, Intent data) {
-        mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, data);
+    public ProjectionProp mProp;
+
+    public void onBundle(ProjectionProp prop) {
+        this.mProp = prop;
+        mMediaProjection = prop.getMediaProjection();
         if (mMediaProjection == null) {
             Log.e("@@", "media projection is null");
             return;
         }
         mMediaProjection.registerCallback(mProjectionCallback, new Handler());
-        startCapturing(mMediaProjection);
+        startCapturing(prop);
     }
 
     public boolean isRecording = false;
 
-    public void startCapturing(MediaProjection mediaProjection) {
-        VideoEncodeConfig video = mVideoEncodeConfig;
-        AudioEncodeConfig audio = mAudioEncodeConfig; // audio can be null
+    public void startCapturing(ProjectionProp prop) {
+        VideoEncodeConfig video = prop.getVideoEncodeConfig();
+        AudioEncodeConfig audio = prop.getAudioEncodeConfig(); // audio can be null
         if (video == null) {
             XApp.toast(getString(R.string.create_screenRecorder_failure));
             return;
         }
-
-        File dir = getSavingDir();
-        if (!dir.exists() && !dir.mkdirs()) {
-            cancelRecorder();
-            return;
-        }
-        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
-        final File file = new File(dir, "Screenshots-" + format.format(new Date())
-                + "-" + video.width + "x" + video.height + ".mp4");
-        Log.d("@@", "Create recorder with :" + video + " \n " + audio + "\n " + file);
-        mRecorder = newRecorder(mediaProjection, video, audio, file);
+        File saveFile = new File(mProp.getSavePath());
+        FileUtils.createFileByDeleteOldFile(saveFile);
+        mRecorder = newRecorder(prop.getMediaProjection(), video, audio, saveFile);
         if (hasPermissions()) {
             startRecorder();
             isRecording = true;
@@ -188,11 +182,6 @@ public class RecordService extends Service {
 
     private VideoEncodeConfig mVideoEncodeConfig;
 
-    private static File getSavingDir() {
-        return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
-                "Screenshots");
-    }
-
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -229,7 +218,7 @@ public class RecordService extends Service {
     }
 
     public void startRecorder() {
-        if (mRecordCallback!=null){
+        if (mRecordCallback != null) {
             mRecordCallback.onStartRecord();
         }
         if (mRecorder == null) {
@@ -239,7 +228,7 @@ public class RecordService extends Service {
     }
 
     public void stopRecorder() {
-        if (mRecordCallback!=null){
+        if (mRecordCallback != null) {
             mRecordCallback.onStopRecord();
         }
         mNotifications.clear();
