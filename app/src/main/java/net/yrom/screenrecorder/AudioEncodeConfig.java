@@ -17,6 +17,7 @@
 package net.yrom.screenrecorder;
 
 import android.media.MediaFormat;
+import android.media.projection.MediaProjection;
 
 import java.util.Objects;
 
@@ -25,6 +26,7 @@ import java.util.Objects;
  * @version 2017/12/3
  */
 public class AudioEncodeConfig {
+    MediaProjection mediaProjection;
     final String codecName;
     final String mimeType;
     final int bitRate;
@@ -32,8 +34,13 @@ public class AudioEncodeConfig {
     final int channelCount;
     final int profile;
 
-    public AudioEncodeConfig(String codecName, String mimeType,
-                             int bitRate, int sampleRate, int channelCount, int profile) {
+    public AudioEncodeConfig(
+            String codecName,
+            String mimeType,
+            int bitRate,
+            int sampleRate,
+            int channelCount,
+            int profile) {
         this.codecName = codecName;
         this.mimeType = Objects.requireNonNull(mimeType);
         this.bitRate = bitRate;

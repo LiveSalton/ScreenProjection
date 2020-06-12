@@ -34,6 +34,7 @@ import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
@@ -46,6 +47,7 @@ import android.widget.SpinnerAdapter;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.salton123.feature.PermissionFeature;
 import com.salton123.log.XLog;
 
 import net.yrom.screenrecorder.bean.ProjectionProp;
@@ -104,6 +106,7 @@ public class MainActivity extends Activity implements RecordCallback {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        new PermissionFeature().onBindLogic();
         setContentView(R.layout.activity_main);
         bindViews();
         Utils.findEncodersByTypeAsync(VIDEO_AVC, infos -> {
@@ -760,7 +763,10 @@ public class MainActivity extends Activity implements RecordCallback {
         int channelCount = getSelectedAudioChannelCount();
         int profile = getSelectedAudioProfile();
 
-        return new AudioEncodeConfig(codec, AUDIO_AAC, bitrate, samplerate, channelCount, profile);
+        AudioEncodeConfig audioEncodeConfig = new AudioEncodeConfig(codec, AUDIO_AAC, bitrate, samplerate,
+                channelCount, profile);
+        audioEncodeConfig.mediaProjection = mediaProjection;
+        return audioEncodeConfig;
     }
 
     public VideoEncodeConfig createVideoConfig() {
@@ -814,6 +820,11 @@ public class MainActivity extends Activity implements RecordCallback {
 
     private String currentSavePath = "";
 
+    private static File getSavingDir() {
+        return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+                "Screenshots");
+    }
+
     private String createSavePath() {
         int[] selectedWithHeight = getSelectedWithHeight();
         boolean isLandscape = isLandscape();
@@ -821,13 +832,18 @@ public class MainActivity extends Activity implements RecordCallback {
         int height = selectedWithHeight[isLandscape ? 1 : 0];
 
         SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
-        String savePath = "/sdcard/z01/Screenshots-" + format.format(new Date())
-                + "-" + width + "x" + height + ".mp4";
+        // String savePath =
+        //         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/Screenshots-" +
+        //                 format.format(new Date())
+        //                 + "-" + width + "x" + height + ".mp4";
+        // String savePath = "/storage/emulated/0/" + format.format(new Date()) + ".mp4";
+        String savePath = getExternalCacheDir().getAbsolutePath() + File.separator + format.format(new Date()) + ".mp4";
         currentSavePath = savePath;
         return savePath;
     }
 
     ProjectionProp mProjectionProp = null;
+    MediaProjection mediaProjection;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -835,7 +851,7 @@ public class MainActivity extends Activity implements RecordCallback {
         if (mService != null) {
             MediaProjectionManager mMediaProjectionManager =
                     (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
-            MediaProjection mediaProjection = mMediaProjectionManager.getMediaProjection(Activity.RESULT_OK, data);
+            mediaProjection = mMediaProjectionManager.getMediaProjection(Activity.RESULT_OK, data);
             mProjectionProp = new ProjectionProp(
                     createAudioConfig(),
                     createVideoConfig(),
