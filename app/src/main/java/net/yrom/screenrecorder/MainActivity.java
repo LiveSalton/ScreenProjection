@@ -50,6 +50,8 @@ import android.widget.ToggleButton;
 import com.salton123.feature.PermissionFeature;
 import com.salton123.log.XLog;
 
+import net.yrom.screenrecorder.audio.AudioPlayManager;
+import net.yrom.screenrecorder.audio.IAudioPlayListener;
 import net.yrom.screenrecorder.bean.ProjectionProp;
 import net.yrom.screenrecorder.callback.Callback;
 import net.yrom.screenrecorder.callback.ProjectionServiceConnection;
@@ -71,11 +73,11 @@ import static android.os.Build.VERSION_CODES.M;
 import static net.yrom.screenrecorder.ScreenRecorder.AUDIO_AAC;
 import static net.yrom.screenrecorder.ScreenRecorder.VIDEO_AVC;
 
-public class MainActivity extends Activity implements RecordCallback {
+public class MainActivity extends Activity implements RecordCallback, IAudioPlayListener {
     private static final int REQUEST_MEDIA_PROJECTION = 1;
     private static final int REQUEST_PERMISSIONS = 2;
     private Button mButton;
-    private ToggleButton mAudioToggle;
+    private ToggleButton mAudioToggle, mPlayAudioToggle;
     private NamedSpinner mVieoResolution;
     private NamedSpinner mVideoFramerate;
     private NamedSpinner mIFrameInterval;
@@ -240,11 +242,14 @@ public class MainActivity extends Activity implements RecordCallback {
         mAudioChannelCount = findViewById(R.id.audio_channel_count);
 
         mAudioToggle = findViewById(R.id.with_audio);
+        mPlayAudioToggle = findViewById(R.id.playAudio);
         mAudioToggle.setOnCheckedChangeListener((buttonView, isChecked) ->
                 findViewById(R.id.audio_format_chooser)
                         .setVisibility(isChecked ? View.VISIBLE : View.GONE)
         );
-
+        mPlayAudioToggle.setOnCheckedChangeListener((buttonView, isChecked) ->
+                playAudio(isChecked)
+        );
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             mOrientation.setSelectedPosition(1);
         }
@@ -263,6 +268,14 @@ public class MainActivity extends Activity implements RecordCallback {
         mOrientation.setOnItemSelectedListener((view, position) -> {
             onOrientationChanged(position, view.getSelectedItem());
         });
+    }
+
+    private void playAudio(boolean isChecked) {
+        if (isChecked) {
+            AudioPlayManager.getInstance().startPlay(this, Uri.parse("/sdcard/test.mp3"), this);
+        } else {
+            AudioPlayManager.getInstance().stopPlay();
+        }
     }
 
     @TargetApi(M)
@@ -861,5 +874,20 @@ public class MainActivity extends Activity implements RecordCallback {
         } else {
             XLog.e(TAG, "mService == null");
         }
+    }
+
+    @Override
+    public void onStart(Uri var1) {
+
+    }
+
+    @Override
+    public void onStop(Uri var1) {
+
+    }
+
+    @Override
+    public void onComplete(Uri var1) {
+
     }
 }

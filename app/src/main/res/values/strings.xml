@@ -16,6 +16,8 @@
     <string name="sample_rate">Sample Rate (HZ)</string>
     <string name="aac_profile">AAC Profile</string>
     <string name="without_audio">Without Audio</string>
+    <string name="play_audio">play Audio</string>
+    <string name="stop_audio">stop Audio</string>
     <string name="with_audio">With Audio</string>
     <string name="start_recorder">Start Recorder</string>
     <string name="stop_recorder">Stop Recorder</string>
