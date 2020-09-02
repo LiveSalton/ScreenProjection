@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <color name="colorPrimary">#0CCB82</color>
+    <color name="colorPrimaryDark">#2EE08E</color>
+    <color name="colorAccent">#28B28B</color>
+    <color name="default_red">#FD645E</color>
+    <color name="default_background">#eeeeee</color>
+    <color name="default_black">#333333</color>
+    <color name="default_black_80">#666666</color>
+    <color name="default_black_60">#999999</color>
+    <color name="translucent">#00FFFFFF</color>
+    <color name="translucent_white">#80FFFFFF</color>
+    <color name="textColorPrimary">#333333</color>
+    <color name="colorHint">#ffa6a6a6</color>
+    <color name="colorSimplebarText">@color/textColorPrimary</color>
+    <color name="colorGray">#505050</color>
+    <color name="colorLine">#f0f0f0</color>
+    <color name="transparent">#00000000</color>
+    <color name="whitesmoke">#F5F5F5</color>
+    <color name="textColor">#333333</color>
+    <color name="textColorHint">#757575</color>
+    <color name="colorButtonPressed">#1976D2</color>
+    <color name="colorButtonDisable">#BBBBBB</color>
+    <color name="colorConfirm">#007AFF</color>
+    <color name="colorCancel">#F44336</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="white95">#F2FFFFFF</color>
+    <color name="white90">#E6FFFFFF</color>
+    <color name="white85">#D9FFFFFF</color>
+    <color name="white80">#CCFFFFFF</color>
+    <color name="white75">#BFFFFFFF</color>
+    <color name="white70">#B3FFFFFF</color>
+    <color name="white65">#A6FFFFFF</color>
+    <color name="white60">#99FFFFFF</color>
+    <color name="white55">#8CFFFFFF</color>
+    <color name="white50">#80FFFFFF</color>
+    <color name="white45">#73FFFFFF</color>
+    <color name="white40">#66FFFFFF</color>
+    <color name="white35">#59FFFFFF</color>
+    <color name="white30">#4DFFFFFF</color>
+    <color name="white25">#40FFFFFF</color>
+    <color name="white20">#33FFFFFF</color>
+    <color name="white15">#26FFFFFF</color>
+    <color name="white10">#1AFFFFFF</color>
+    <color name="white5">#0DFFFFFF</color>
+
+    <!-- 黑色 -->
+    <color name="black">#FF000000</color>
+    <color name="black95">#F2000000</color>
+    <color name="black90">#E6000000</color>
+    <color name="black85">#D9000000</color>
+    <color name="black80">#CC000000</color>
+    <color name="black75">#B000000F</color>
+    <color name="black70">#B3000000</color>
+    <color name="black65">#A6000000</color>
+    <color name="black60">#99000000</color>
+    <color name="black55">#8C000000</color>
+    <color name="black50">#80000000</color>
+    <color name="black45">#73000000</color>
+    <color name="black40">#66000000</color>
+    <color name="black35">#59000000</color>
+    <color name="black30">#4D000000</color>
+    <color name="black25">#40000000</color>
+    <color name="black20">#33000000</color>
+    <color name="black15">#26000000</color>
+    <color name="black10">#1A000000</color>
+    <color name="black5">#0D000000</color>
+
+    <!-- 灰色 -->
+    <color name="gray">#808080</color>
+    <!-- 红色 -->
+    <color name="red">#FF0000</color>
+    <!-- 金色 -->
+    <color name="gold">#FFD700</color>
+    <!-- 黄色 -->
+    <color name="yellow">#FFFF00</color>
+    <!-- 绿色 -->
+    <color name="green">#008000</color>
+    <!-- 蓝色 -->
+    <color name="blue">#0000FF</color>
+    <!-- 紫色 -->
+    <color name="purple">#800080</color>
+    <!-- 粉色 -->
+    <color name="pink">#FFC0CB</color>
+    <!-- 橙色 -->
+    <color name="orange">#FFA500</color>
+    <color name="gray_ripple">#ffe7e7e7</color>
+</resources>
