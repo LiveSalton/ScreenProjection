@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
+
 def gitHash = 'git rev-parse --short HEAD'.execute([], project.rootDir).text.trim()
 def buildTime = new Date().format("yyyy-MM-dd' 'HH:mm:ss")
 println("gitHash:" + gitHash + ",buildTime:" + buildTime)
@@ -18,13 +19,20 @@ android {
         flavorDimensions versionName
         multiDexEnabled true
         vectorDrawables.useSupportLibrary = true
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = [AROUTER_MODULE_NAME: project.getName()]
+            }
+        }
+
         ndk {
-            abiFilters "armeabi-v7a" , "x86"
+            abiFilters "armeabi-v7a", "x86"
 //            "arm64-v8a"
 //            "armeabi-v7a" , "x86" ,
         }
         buildConfigField "String", "GIT_HASH", "\"${gitHash}\""
         buildConfigField "String", "BUILD_TIME", "\"${buildTime}\""
+        manifestPlaceholders = rootProject.ext.manifestPlaceholders
     }
 
     signingConfigs {
@@ -45,6 +53,10 @@ android {
                 versionNameSuffix '00'
                 minifyEnabled false
                 signingConfig signingConfigs.release
+                //为已经存在的applicationId添加后缀
+                applicationIdSuffix ".debug"
+                // 为版本名添加后缀
+                versionNameSuffix "-debug"
             } else {
                 signingConfig signingConfigs.release
 //                minifyEnabled true
@@ -89,13 +101,15 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'androidx.core:core-ktx:1.2.0'
-    implementation "com.salton123:saltonFramework:1.3.0.19"
-    implementation"com.github.CymChad:BaseRecyclerViewAdapterHelper:2.9.50"
-    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-    implementation 'com.caverock:androidsvg:1.4'
-    implementation 'com.lxj:xpopup:1.9.0' //就是androidx版本
+    api fileTree(include: ['*.jar'], dir: 'libs')
+    api fileTree(include: ['*.aar'], dir: 'libs')
+    api project(':lib_common')
+    api rootProject.ext.supportLibs
+    api rootProject.ext.otherDependenciesLibs
+    kapt rootProject.ext.compilerDependenciesLibs
+}
+kapt {
+    arguments {
+        arg("AROUTER_MODULE_NAME", project.getName())
+    }
 }

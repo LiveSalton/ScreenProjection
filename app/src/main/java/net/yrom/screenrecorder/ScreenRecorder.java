@@ -27,13 +27,12 @@ import android.os.Message;
 import android.util.Log;
 import android.view.Surface;
 
+import com.salton123.biz_record.bean.ProjectionProp;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static android.media.MediaFormat.MIMETYPE_AUDIO_AAC;
-import static android.media.MediaFormat.MIMETYPE_VIDEO_AVC;
 
 /**
  * @author Yrom
@@ -42,9 +41,7 @@ public class ScreenRecorder {
     private static final String TAG = "ScreenRecorder";
     private static final boolean VERBOSE = false;
     private static final int INVALID_INDEX = -1;
-    static final String VIDEO_AVC = MIMETYPE_VIDEO_AVC; // H.264 Advanced Video Coding
-    static final String AUDIO_AAC = MIMETYPE_AUDIO_AAC; // H.264 Advanced Audio Coding
-    private String mDstPath;
+    private ProjectionProp mProp;
     private VideoEncoder mVideoEncoder;
     private MicRecorder mAudioEncoder;
 
@@ -68,16 +65,12 @@ public class ScreenRecorder {
 
     /**
      * @param display for {@link VirtualDisplay#setSurface(Surface)}
-     * @param dstPath saving path
      */
-    public ScreenRecorder(VideoEncodeConfig video,
-                          AudioEncodeConfig audio,
-                          VirtualDisplay display,
-                          String dstPath) {
+    public ScreenRecorder(ProjectionProp prop, VirtualDisplay display) {
+        this.mProp = prop;
         mVirtualDisplay = display;
-        mDstPath = dstPath;
-        mVideoEncoder = new VideoEncoder(video);
-        mAudioEncoder = audio == null ? null : new MicRecorder(audio);
+        mVideoEncoder = prop.getVideoEncodeConfig() == null ? null : new VideoEncoder(prop);
+        mAudioEncoder = prop.getAudioEncodeConfig() == null ? null : new MicRecorder(prop);
     }
 
     /**
@@ -103,10 +96,6 @@ public class ScreenRecorder {
 
     public void setCallback(Callback callback) {
         mCallback = callback;
-    }
-
-    public String getSavedPath() {
-        return mDstPath;
     }
 
     interface Callback {
@@ -140,6 +129,7 @@ public class ScreenRecorder {
                     } catch (Exception e) {
                         msg.obj = e;
                     }
+                    //流程是连接一起的，不用break
                 case MSG_STOP:
                 case MSG_ERROR:
                     stopEncoders();
@@ -179,7 +169,7 @@ public class ScreenRecorder {
 
         try {
             // create muxer
-            mMuxer = new MediaMuxer(mDstPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mMuxer = new MediaMuxer(mProp.getSavePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
             // create encoder and input surface
             prepareVideoEncoder();
             prepareAudioEncoder();
@@ -408,8 +398,6 @@ public class ScreenRecorder {
                 Log.e(TAG, "MicRecorder ran into an error! ", e);
                 Message.obtain(mHandler, MSG_ERROR, e).sendToTarget();
             }
-
-
         };
         micRecorder.setCallback(callback);
         micRecorder.prepare();
@@ -431,11 +419,13 @@ public class ScreenRecorder {
             if (mVideoEncoder != null) mVideoEncoder.stop();
         } catch (IllegalStateException e) {
             // ignored
+            e.printStackTrace();
         }
         try {
             if (mAudioEncoder != null) mAudioEncoder.stop();
         } catch (IllegalStateException e) {
             // ignored
+            e.printStackTrace();
         }
 
     }

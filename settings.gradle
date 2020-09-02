@@ -1,1 +1,5 @@
-include ':app'
+include ':app', ':lib_common',  ':lib_third',':lib_api',':lib_resources'
+project(":lib_common").projectDir = new File("module_lib/lib_common")
+project(":lib_third").projectDir = new File("module_lib/lib_third")
+project(":lib_api").projectDir = new File("module_lib/lib_api")
+project(":lib_resources").projectDir = new File("module_lib/lib_resources")

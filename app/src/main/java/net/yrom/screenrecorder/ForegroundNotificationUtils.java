@@ -7,11 +7,12 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Build;
 
 import com.salton123.app.BaseApplication;
+import com.salton123.biz_record.Config;
+import com.salton123.soulove.biz_record.R;
 
 import androidx.annotation.DrawableRes;
 
@@ -25,7 +26,7 @@ import static android.os.Build.VERSION_CODES.O;
  */
 public class ForegroundNotificationUtils {
     // 通知渠道的id
-    private static String CHANNEL_ID = "Screen sharing";
+    private static String CHANNEL_ID = "Screen_sharing";
     private static int CHANNEL_POSITION = 1;
     private static String NotifyTitle = "Screen sharing";
     private static String NotifyContent = "The elephant print picture is sharing your screen.";
@@ -134,7 +135,7 @@ public class ForegroundNotificationUtils {
 
     private static Notification.Action stopAction() {
         if (mStopAction == null) {
-            Intent intent = new Intent(XApp.ACTION_STOP)
+            Intent intent = new Intent(Config.ACTION_STOP)
                     .setPackage(BaseApplication.sInstance.getPackageName());
             PendingIntent pendingIntent = PendingIntent.getBroadcast(BaseApplication.sInstance, 1,
                     intent, PendingIntent.FLAG_ONE_SHOT);

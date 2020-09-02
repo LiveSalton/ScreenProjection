@@ -1,6 +1,90 @@
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="15dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="@string/setting_video"
+                android:textColor="@color/black35"
+                android:textSize="12sp" />
+
+            <com.hjq.widget.layout.SettingBar
+                android:id="@+id/sb_resolution"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:bar_leftText="@string/resolution"
+                app:bar_rightIcon="@drawable/ico_go_black" />
+
+            <com.hjq.widget.layout.SettingBar
+                android:id="@+id/sb_video_bitrate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:bar_leftText="@string/bitrate"
+                app:bar_rightIcon="@drawable/ico_go_black" />
+
+            <com.hjq.widget.layout.SettingBar
+                android:id="@+id/sb_video_encoder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:bar_leftText="@string/video_encoder"
+                app:bar_rightIcon="@drawable/ico_go_black" />
+
+            <com.hjq.widget.layout.SettingBar
+                android:id="@+id/sb_audio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:bar_leftText="@string/audio"
+                app:bar_rightHint="无声"
+                app:bar_rightIcon="@drawable/ico_go_black" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="15dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="@string/setting_control"
+                android:textColor="@color/black35"
+                android:textSize="12sp" />
+
+            <com.hjq.widget.layout.SettingBar
+                android:id="@+id/sb_countdown"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:bar_leftText="@string/countdown"
+                app:bar_rightHint="3s" />
+
+            <com.hjq.widget.layout.SettingBar
+                android:id="@+id/sb_save_path"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:bar_leftText="@string/save_path"
+                app:bar_rightHint="Movies" />
+
+            <com.hjq.widget.layout.SettingBar
+                android:id="@+id/sb_setting_exit"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="15dp"
+                app:bar_leftColor="@color/red"
+                app:bar_leftText="@string/setting_exit" />
+        </LinearLayout>
+    </ScrollView>
+</RelativeLayout>

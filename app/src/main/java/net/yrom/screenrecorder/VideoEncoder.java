@@ -21,6 +21,8 @@ import android.media.MediaFormat;
 import android.util.Log;
 import android.view.Surface;
 
+import com.salton123.biz_record.bean.ProjectionProp;
+
 import java.util.Objects;
 
 /**
@@ -29,13 +31,12 @@ import java.util.Objects;
  */
 class VideoEncoder extends BaseEncoder {
     private static final boolean VERBOSE = false;
-    private VideoEncodeConfig mConfig;
     private Surface mSurface;
+    private ProjectionProp prop;
 
-
-    VideoEncoder(VideoEncodeConfig config) {
-        super(config.codecName);
-        this.mConfig = config;
+    VideoEncoder(ProjectionProp prop) {
+        super(Objects.requireNonNull(prop.getVideoEncodeConfig()).codecName);
+        this.prop = prop;
     }
 
     @Override
@@ -46,7 +47,7 @@ class VideoEncoder extends BaseEncoder {
 
     @Override
     protected MediaFormat createMediaFormat() {
-        return mConfig.toFormat();
+        return Objects.requireNonNull(prop.getVideoEncodeConfig()).toFormat();
     }
 
     /**

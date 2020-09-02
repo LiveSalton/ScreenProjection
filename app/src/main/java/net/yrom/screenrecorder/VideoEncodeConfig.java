@@ -26,14 +26,14 @@ import java.util.Objects;
  * @version 2017/12/3
  */
 public class VideoEncodeConfig {
-    final int width;
-    final int height;
-    final int bitrate;
-    final int framerate;
-    final int iframeInterval;
-    final String codecName;
-    final String mimeType;
-    final MediaCodecInfo.CodecProfileLevel codecProfileLevel;
+    public int width;
+    public int height;
+    public int bitrate;
+    public int framerate;
+    public int iframeInterval;
+    public String codecName;
+    public String mimeType;
+    public MediaCodecInfo.CodecProfileLevel codecProfileLevel;
 
     /**
      * @param codecName         selected codec name, maybe null
@@ -62,7 +62,7 @@ public class VideoEncodeConfig {
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iframeInterval);
         if (codecProfileLevel != null && codecProfileLevel.profile != 0 && codecProfileLevel.level != 0) {
             format.setInteger(MediaFormat.KEY_PROFILE, codecProfileLevel.profile);
-            format.setInteger("level", codecProfileLevel.level);
+            format.setInteger(MediaFormat.KEY_LEVEL, codecProfileLevel.level);
         }
         // maybe useful
         // format.setInteger(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, 10_000_000);

@@ -26,34 +26,34 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-class Utils {
+public class Utils {
 
 
-    interface Callback {
-        void onResult(MediaCodecInfo[] infos);
-    }
-
-    static final class EncoderFinder extends AsyncTask<String, Void, MediaCodecInfo[]> {
-        private Callback func;
-
-        EncoderFinder(Callback func) {
-            this.func = func;
-        }
-
-        @Override
-        protected MediaCodecInfo[] doInBackground(String... mimeTypes) {
-            return findEncodersByType(mimeTypes[0]);
-        }
-
-        @Override
-        protected void onPostExecute(MediaCodecInfo[] mediaCodecInfos) {
-            func.onResult(mediaCodecInfos);
-        }
-    }
-
-    static void findEncodersByTypeAsync(String mimeType, Callback callback) {
-        new EncoderFinder(callback).execute(mimeType);
-    }
+    // public interface Callback {
+    //     void onResult(MediaCodecInfo[] infos);
+    // }
+    //
+    // static final class EncoderFinder extends AsyncTask<String, Void, MediaCodecInfo[]> {
+    //     private Callback func;
+    //
+    //     EncoderFinder(Callback func) {
+    //         this.func = func;
+    //     }
+    //
+    //     @Override
+    //     protected MediaCodecInfo[] doInBackground(String... mimeTypes) {
+    //         return findEncodersByType(mimeTypes[0]);
+    //     }
+    //
+    //     @Override
+    //     protected void onPostExecute(MediaCodecInfo[] mediaCodecInfos) {
+    //         func.onResult(mediaCodecInfos);
+    //     }
+    // }
+    //
+    // public static void findEncodersByTypeAsync(String mimeType, Callback callback) {
+    //     new EncoderFinder(callback).execute(mimeType);
+    // }
 
     /**
      * Find an encoder supported specified MIME type

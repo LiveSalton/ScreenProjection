@@ -34,6 +34,7 @@ import android.util.Log;
 import android.util.SparseLongArray;
 
 import com.salton123.app.BaseApplication;
+import com.salton123.biz_record.bean.ProjectionProp;
 import com.salton123.log.XLog;
 
 import java.io.IOException;
@@ -55,7 +56,7 @@ import static android.os.Build.VERSION_CODES.N;
  */
 class MicRecorder implements Encoder {
     private static final String TAG = "MicRecorder";
-    private static final boolean VERBOSE = true;
+    private static final boolean VERBOSE = false;
 
     private final AudioEncoder mEncoder;
     private final HandlerThread mRecordThread;
@@ -71,15 +72,15 @@ class MicRecorder implements Encoder {
     private int mChannelsSampleRate;
     private MediaProjection mediaProjection;
 
-    MicRecorder(AudioEncodeConfig config) {
-        mEncoder = new AudioEncoder(config);
-        mSampleRate = config.sampleRate;
-        mChannelsSampleRate = mSampleRate * config.channelCount;
-        mediaProjection = config.mediaProjection;
+    MicRecorder(ProjectionProp prop) {
+        mEncoder = new AudioEncoder(prop.getAudioEncodeConfig());
+        mSampleRate = prop.getAudioEncodeConfig().sampleRate;
+        mChannelsSampleRate = mSampleRate * prop.getAudioEncodeConfig().channelCount;
+        mediaProjection = prop.getMediaProjection();
         if (VERBOSE) {
             Log.i(TAG, "in bitrate " + mChannelsSampleRate * 16 /* PCM_16BIT*/);
         }
-        mChannelConfig = config.channelCount == 2 ? AudioFormat.CHANNEL_IN_STEREO : AudioFormat.CHANNEL_IN_MONO;
+        mChannelConfig = prop.getAudioEncodeConfig().channelCount == 2 ? AudioFormat.CHANNEL_IN_STEREO : AudioFormat.CHANNEL_IN_MONO;
         mRecordThread = new HandlerThread(TAG);
     }
 
@@ -203,6 +204,7 @@ class MicRecorder implements Encoder {
                         mCallbackDelegate.onError(MicRecorder.this, e);
                         break;
                     }
+                    //流程是连接一起的，不用break
                 case MSG_FEED_INPUT:
                     if (!mForceStop.get()) {
                         int index = pollInput();

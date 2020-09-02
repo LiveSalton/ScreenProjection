@@ -8,10 +8,21 @@
         <item>1920x1080</item>
         <item>3860x2160</item>
     </string-array>
-    <!-- audio channel counts-->
+    <string-array name="audio">
+        <item>无声</item>
+        <item>麦克风</item>
+        <item>内录</item>
+        <item>麦克风和内录</item>
+    </string-array>
+
     <string-array name="audio_channels">
         <item>1</item>
         <item>2</item>
+    </string-array>
+
+    <string-array name="orientation">
+        <item>横屏</item>
+        <item>竖屏</item>
     </string-array>
     <!-- video bitrate (kbps) -->
     <string-array name="video_bitrates">
@@ -42,10 +53,4 @@
         <item>20</item>
         <item>30</item>
     </string-array>
-    <string-array name="orientations">
-        <item>@string/portrait</item>
-        <item>@string/landscape</item>
-    </string-array>
-    <string name="portrait">Portrait</string>
-    <string name="landscape">Landscape</string>
 </resources>

@@ -18,10 +18,6 @@ package net.yrom.screenrecorder;
 
 import android.media.MediaFormat;
 
-/**
- * @author yrom
- * @version 2017/12/3
- */
 class AudioEncoder extends BaseEncoder {
     private final AudioEncodeConfig mConfig;
 
@@ -34,5 +30,4 @@ class AudioEncoder extends BaseEncoder {
     protected MediaFormat createMediaFormat() {
         return mConfig.toFormat();
     }
-
 }

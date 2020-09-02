@@ -28,6 +28,7 @@ android {
                 arguments = [AROUTER_MODULE_NAME: project.getName()]
             }
         }
+        buildConfigField "String", "bizType", "\"${rootProject.ext.dependVersion.bizType}\""
     }
     sourceSets {
         main {

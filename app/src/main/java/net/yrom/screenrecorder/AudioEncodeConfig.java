@@ -26,7 +26,6 @@ import java.util.Objects;
  * @version 2017/12/3
  */
 public class AudioEncodeConfig {
-    MediaProjection mediaProjection;
     final String codecName;
     final String mimeType;
     final int bitRate;

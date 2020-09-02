@@ -2,6 +2,7 @@ package net.yrom.screenrecorder;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Point;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -12,15 +13,23 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 
-import com.blankj.utilcode.util.FileUtils;
-import com.salton123.log.XLog;
+import androidx.annotation.Nullable;
 
-import net.yrom.screenrecorder.bean.ProjectionProp;
+import com.blankj.utilcode.util.FileUtils;
+import com.hjq.toast.ToastUtils;
+import com.salton123.app.BaseApplication;
+import com.salton123.biz_record.bean.ProjectionProp;
+import com.salton123.log.XLog;
+import com.salton123.soulove.biz_record.R;
+
+import net.yrom.screenrecorder.callback.IRecordAction;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 
-import androidx.annotation.Nullable;
-
+import static android.Manifest.permission.RECORD_AUDIO;
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static com.blankj.utilcode.util.ThreadUtils.runOnUiThread;
 
 /**
@@ -29,34 +38,37 @@ import static com.blankj.utilcode.util.ThreadUtils.runOnUiThread;
  * ModifyTime: 20:28
  * Description:
  */
-public class RecordService extends Service {
+public class RecordService extends Service implements IRecordAction {
     public ScreenRecorder mRecorder;
     public MediaProjection mMediaProjection;
     private VirtualDisplay mVirtualDisplay;
     private static final String TAG = "BaseRecordService";
+    private ProjectionProp mProp;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        ForegroundNotificationUtils.startForegroundNotification(this);
         XLog.i(TAG, "onCreate");
     }
 
     @Override
     public void onStart(Intent intent, int startId) {
         XLog.i(TAG, "onStart");
-        ForegroundNotificationUtils.startForegroundNotification(this);
         super.onStart(intent, startId);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         XLog.i(TAG, "onStartCommand");
-        ForegroundNotificationUtils.startForegroundNotification(this);
         return super.onStartCommand(intent, flags, startId);
     }
 
-    public void onBundle(MediaProjection mediaProjection) {
+    public void updateProp(@NotNull ProjectionProp prop) {
+        mProp = prop;
+        onBundle(prop.getMediaProjection());
+    }
+
+    private void onBundle(MediaProjection mediaProjection) {
         mMediaProjection = mediaProjection;
         if (mMediaProjection == null) {
             Log.e("@@", "media projection is null");
@@ -67,19 +79,12 @@ public class RecordService extends Service {
 
     public boolean isRecording = false;
 
-    public void startCapturing(ProjectionProp prop) {
-        ForegroundNotificationUtils.startForegroundNotification(this);
-        VideoEncodeConfig video = prop.getVideoEncodeConfig();
-        AudioEncodeConfig audio = prop.getAudioEncodeConfig(); // audio can be null
-        File saveFile = new File(prop.getSavePath());
-        FileUtils.createFileByDeleteOldFile(saveFile);
-        mRecorder = newRecorder(mMediaProjection, video, audio, saveFile);
-        if (XApp.hasPermissions()) {
-            startRecorder();
-            isRecording = true;
-        } else {
-            cancelRecorder();
-        }
+    public static boolean hasPermissions() {
+        PackageManager pm = BaseApplication.sInstance.getPackageManager();
+        String packageName = BaseApplication.sInstance.getPackageName();
+        int granted = pm.checkPermission(RECORD_AUDIO, packageName)
+                | pm.checkPermission(WRITE_EXTERNAL_STORAGE, packageName);
+        return granted == PackageManager.PERMISSION_GRANTED;
     }
 
     private MediaProjection.Callback mProjectionCallback = new MediaProjection.Callback() {
@@ -91,22 +96,23 @@ public class RecordService extends Service {
         }
     };
 
-    private ScreenRecorder newRecorder(MediaProjection mediaProjection, VideoEncodeConfig video,
-                                       AudioEncodeConfig audio, File output) {
-        final VirtualDisplay display = getOrCreateVirtualDisplay(mediaProjection, video);
-        ScreenRecorder r = new ScreenRecorder(video, audio, display, output.getAbsolutePath());
+    private ScreenRecorder newRecorder(ProjectionProp prop) {
+        final VirtualDisplay display =
+                getOrCreateVirtualDisplay(prop.getMediaProjection(), prop.getVideoEncodeConfig());
+        ScreenRecorder r = new ScreenRecorder(prop, display);
         r.setCallback(new ScreenRecorder.Callback() {
             @Override
             public void onStop(Throwable error) {
                 runOnUiThread(() -> stopRecorder());
                 if (error != null) {
-                    XApp.toast("Recorder error ! See logcat for more details");
+                    ToastUtils.show("Recorder error ! See logcat for more details");
+                    XLog.i(TAG, error.getMessage());
                     error.printStackTrace();
-                    output.delete();
+                    new File(prop.getSavePath()).delete();
                 } else {
                     Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
                             .addCategory(Intent.CATEGORY_DEFAULT)
-                            .setData(Uri.fromFile(output));
+                            .setData(Uri.fromFile(new File(prop.getSavePath())));
                     sendBroadcast(intent);
                 }
             }
@@ -117,7 +123,7 @@ public class RecordService extends Service {
 
             @Override
             public void onRecording(long presentationTimeUs) {
-                ForegroundNotificationUtils.startForegroundNotification(RecordService.this);
+
             }
         });
         return r;
@@ -169,13 +175,32 @@ public class RecordService extends Service {
         this.mRecordCallback = callback;
     }
 
-    class InnerBinder extends Binder {
+    @Override
+    public boolean isRecording() {
+        return isRecording;
+    }
+
+    public class InnerBinder extends Binder {
         public RecordService getService() {
             return RecordService.this;
         }
     }
 
+    @Override
     public void startRecorder() {
+        ForegroundNotificationUtils.startForegroundNotification(this);
+        File saveFile = new File(mProp.getSavePath());
+        FileUtils.createFileByDeleteOldFile(saveFile);
+        mRecorder = newRecorder(mProp);
+        if (hasPermissions()) {
+            startRecordAction();
+        } else {
+            cancelRecorder();
+        }
+    }
+
+    private void startRecordAction() {
+        isRecording = true;
         if (mRecordCallback != null) {
             mRecordCallback.onStartRecord();
         }
@@ -185,8 +210,10 @@ public class RecordService extends Service {
         mRecorder.start();
     }
 
+    @Override
     public void stopRecorder() {
         ForegroundNotificationUtils.deleteForegroundNotification(this);
+        isRecording = false;
         if (mRecordCallback != null) {
             mRecordCallback.onStopRecord();
         }
@@ -194,14 +221,14 @@ public class RecordService extends Service {
             mRecorder.quit();
         }
         mRecorder = null;
-        isRecording = false;
     }
 
-    private void cancelRecorder() {
+    @Override
+    public void cancelRecorder() {
         if (mRecorder == null) {
             return;
         }
-        XApp.toast(getString(R.string.permission_denied_screen_recorder_cancel));
+        ToastUtils.show(getString(R.string.permission_denied_screen_recorder_cancel));
         stopRecorder();
     }
 
